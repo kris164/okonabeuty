@@ -177,6 +177,25 @@ kilka niezależnych procesów PHP, sprawdzają kolizje i utratę zapisów,
 idempotencję, trwałość, uszkodzony JSON, godziny/DST, API i panelowe
 anulowania. Używają fikcyjnych danych i atrap Meta, bez wysyłki wiadomości.
 
+## Galeria filmów
+
+Sekcja „Efekty” zawiera pięć filmów w `www/media`, z miniaturami WebP.
+To zoptymalizowane kopie H.264/AAC, 720 × 1280, z metadanymi MP4 na
+początku pliku (`faststart`). Oryginały z dysku E: nie zostały zmienione.
+Kopie wraz z miniaturami zajmują około 28,5 MiB zamiast 167 MB oryginałów.
+
+Filmy mają własne przyciski odtwarzania, dźwięku i pełnego ekranu.
+Nie startują automatycznie, a `preload="none"` ogranicza pobieranie
+przed odtworzeniem. Uruchomienie kolejnego filmu zatrzymuje poprzedni.
+Błąd odtwarzania jest widoczny przy filmie, z odnośnikiem do pliku MP4.
+
+Na OVH wgraj także cały `www/media` oraz `www/gallery.js`.
+Serwer powinien obsługiwać żądania `Range` dla MP4, aby działało przewijanie.
+Filmy i miniatury są publiczne, z godziną cache. Przy podmianie materiału
+zmień nazwę pliku i odnośniki, żeby uniknąć wyświetlania starej wersji.
+Przed publikacją potwierdź prawa do muzyki i zgody osób widocznych
+w materiałach. Jeśli filmy zawierają wypowiedzi, dodaj także ich napisy.
+
 ## Przed publicznym uruchomieniem
 
 Uzupełnij pełne dane administratora i informacje RODO w sekcji danych

@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="booking.css">
 <script src="booking.js" defer></script>
+<script src="gallery.js" defer></script>
 <style>
   :root{
     --bg:        #121010;
@@ -272,7 +273,51 @@
   <div class="wrap">
     <p class="kicker">Portfolio</p>
     <h2 class="title">Zobacz efekty moich prac</h2>
-    <p class="lead">Aktualne metamorfozy, relacje z zabiegów i opinie klientów znajdziesz na Instagramie.</p>
+    <p class="lead">Zajrzyj do gabinetu i poznaj kulisy mojej pracy. Filmy obejrzysz bezpośrednio tutaj.</p>
+    <div class="video-gallery">
+      <figure class="video-card">
+        <video controls playsinline preload="none" poster="media/misseye-gabinet.webp" width="720" height="1280" aria-labelledby="film-gabinet">
+          <source src="media/misseye-gabinet.mp4" type="video/mp4">
+          Twoja przeglądarka nie obsługuje wideo. <a href="media/misseye-gabinet.mp4">Otwórz film „Poznaj gabinet”.</a>
+        </video>
+        <figcaption><h3 id="film-gabinet">Poznaj gabinet</h3></figcaption>
+        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/misseye-gabinet.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+      </figure>
+      <figure class="video-card">
+        <video controls playsinline preload="none" poster="media/przed-i-po.webp" width="720" height="1280" aria-labelledby="film-przed-po">
+          <source src="media/przed-i-po.mp4" type="video/mp4">
+          Twoja przeglądarka nie obsługuje wideo. <a href="media/przed-i-po.mp4">Otwórz film „Przed i po”.</a>
+        </video>
+        <figcaption><h3 id="film-przed-po">Przed i po</h3></figcaption>
+        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/przed-i-po.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+      </figure>
+      <figure class="video-card">
+        <video controls playsinline preload="none" poster="media/perfect-love.webp" width="720" height="1280" aria-labelledby="film-perfect-love">
+          <source src="media/perfect-love.mp4" type="video/mp4">
+          Twoja przeglądarka nie obsługuje wideo. <a href="media/perfect-love.mp4">Otwórz film „Perfect Love”.</a>
+        </video>
+        <figcaption><h3 id="film-perfect-love">Perfect Love</h3></figcaption>
+        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/perfect-love.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+      </figure>
+      <figure class="video-card">
+        <video controls playsinline preload="none" poster="media/dynamiczny.webp" width="720" height="1280" aria-labelledby="film-kulisy">
+          <source src="media/dynamiczny.mp4" type="video/mp4">
+          Twoja przeglądarka nie obsługuje wideo. <a href="media/dynamiczny.mp4">Otwórz film „MISSEYE — kulisy pracy”.</a>
+        </video>
+        <figcaption><h3 id="film-kulisy">MISSEYE — kulisy pracy</h3></figcaption>
+        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/dynamiczny.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+      </figure>
+      <figure class="video-card">
+        <video controls playsinline preload="none" poster="media/wizyta-w-gabinecie.webp" width="720" height="1280" aria-labelledby="film-wizyta">
+          <source src="media/wizyta-w-gabinecie.mp4" type="video/mp4">
+          Twoja przeglądarka nie obsługuje wideo. <a href="media/wizyta-w-gabinecie.mp4">Otwórz film „Wizyta w gabinecie”.</a>
+        </video>
+        <figcaption><h3 id="film-wizyta">Wizyta w gabinecie</h3></figcaption>
+        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/wizyta-w-gabinecie.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+      </figure>
+    </div>
+    <p class="gallery-note">Filmy uruchamiasz samodzielnie. Dźwięk i pełny ekran są dostępne w odtwarzaczu.</p>
+    <p class="lead">Więcej metamorfoz i relacji znajdziesz na moich profilach Instagram.</p>
     <div class="ig-cards">
       <a class="ig-card" href="https://instagram.com/misseye.smp" target="_blank" rel="noopener">
         <span class="handle">@misseye.smp</span>

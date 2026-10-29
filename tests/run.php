@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'http.php';
+require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'media.php';
 
 use Misseye\BookingStore;
 use Misseye\HttpError;
@@ -307,7 +308,45 @@ try {
         check($empty->list('2026-10-30') === []);
     });
 
-    run('HTTP API, auth, cancellation, private paths and request validation', function () use ($root, $temporary): void {
+    run('media byte ranges, including suffixes and invalid offsets', function (): void {
+        check(\Misseye\mediaRange(null, 1000) === null);
+        check(\Misseye\mediaRange('bytes=0-99', 1000) === [0, 99]);
+        check(\Misseye\mediaRange('bytes=500-', 1000) === [500, 999]);
+        check(\Misseye\mediaRange('bytes=-100', 1000) === [900, 999]);
+        check(\Misseye\mediaRange('bytes=0-9999', 1000) === [0, 999]);
+        check(\Misseye\mediaRange('bytes=-9999', 1000) === [0, 999]);
+        check(\Misseye\mediaRange('bytes=0-10,30-40', 1000) === null);
+        expect(fn () => \Misseye\mediaRange('bytes=1000-', 1000), 416);
+        expect(fn () => \Misseye\mediaRange('bytes=10-5', 1000), 416);
+        expect(fn () => \Misseye\mediaRange('bytes=-0', 1000), 416);
+        expect(fn () => \Misseye\mediaRange('bytes=0-', 0), 416);
+    });
+
+    run('five video cards have posters, controls and no automatic playback', function () use ($root): void {
+        $document = new DOMDocument();
+        $document->loadHTML(file_get_contents($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'index.html'), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $videos = $document->getElementsByTagName('video');
+        check($videos->length === 5);
+        foreach ($videos as $video) {
+            check($video->hasAttribute('controls') && $video->hasAttribute('playsinline'));
+            check(!$video->hasAttribute('autoplay') && $video->getAttribute('preload') === 'none');
+            check($video->getAttribute('width') === '720' && $video->getAttribute('height') === '1280');
+            $poster = $root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $video->getAttribute('poster'));
+            check(is_file($poster), 'Missing video poster');
+            check($video->getAttribute('aria-labelledby') !== '');
+            $sources = $video->getElementsByTagName('source');
+            check($sources->length === 1 && $sources->item(0)->getAttribute('type') === 'video/mp4');
+            $source = $root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $sources->item(0)->getAttribute('src'));
+            check(is_file($source) && filesize($source) > 0 && filesize($source) < 15 * 1024 * 1024);
+        }
+        $bytes = 0;
+        foreach (glob($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . '*') as $file) {
+            $bytes += filesize($file);
+        }
+        check($bytes < 40 * 1024 * 1024, 'Video gallery exceeds its size budget');
+    });
+
+    run('HTTP API, auth, cancellation, media seeking and private paths', function () use ($root, $temporary): void {
         $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
         check($socket !== false, 'Cannot reserve test port');
         $address = stream_socket_get_name($socket, false);
@@ -367,9 +406,29 @@ try {
             foreach (['/config.php', '/.env', '/data/bookings.json', '/app/booking.php', '/.git/config', '/.htaccess'] as $private) {
                 check(request($base, $private)[0] === 404, 'Private file exposed: ' . $private);
             }
-            foreach (['/', '/admin', '/booking.js', '/booking.css', '/admin.js'] as $asset) {
+            foreach (['/', '/admin', '/booking.js', '/booking.css', '/admin.js', '/gallery.js'] as $asset) {
                 check(request($base, $asset)[0] === 200, 'Asset missing: ' . $asset);
             }
+            foreach (['dynamiczny', 'misseye-gabinet', 'perfect-love', 'przed-i-po', 'wizyta-w-gabinecie'] as $name) {
+                $file = $root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . $name . '.mp4';
+                [$code, $body, $headers] = request($base, '/media/' . $name . '.mp4', 'GET', ['Range: bytes=0-1023']);
+                check($code === 206 && strlen($body) === 1024, 'Video byte range is not served');
+                check($body === file_get_contents($file, false, null, 0, 1024));
+                check(in_array('Content-Type: video/mp4', $headers, true));
+                check(in_array('Content-Range: bytes 0-1023/' . filesize($file), $headers, true));
+                [$code, $poster, $headers] = request($base, '/media/' . $name . '.webp');
+                check($code === 200 && substr($poster, 0, 4) === 'RIFF' && substr($poster, 8, 4) === 'WEBP');
+                check(in_array('Content-Type: image/webp', $headers, true));
+            }
+            [$code, $suffix] = request($base, '/media/perfect-love.mp4', 'GET', ['Range: bytes=-64']);
+            check($code === 206 && strlen($suffix) === 64);
+            [$code, $empty] = request($base, '/media/perfect-love.mp4', 'GET', ['Range: bytes=999999999-']);
+            check($code === 416 && $empty === '');
+            [$code, $empty, $headers] = request($base, '/media/perfect-love.mp4', 'HEAD', ['Range: bytes=0-63']);
+            check($code === 200 && $empty === '');
+            check(in_array('Content-Length: ' . filesize($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . 'perfect-love.mp4'), $headers, true));
+            check(request($base, '/media/missing.mp4')[0] === 404);
+            check(request($base, '/media/bookings.json')[0] === 404);
             check(request($base, '/api/bookings', 'POST', [...$jsonHeaders, 'Origin: https://other.invalid'], '{}')[0] === 403);
             check(request($base, '/api/bookings', 'POST', $jsonHeaders, '{')[0] === 400);
             check(request($base, '/api/bookings', 'POST', $jsonHeaders, str_repeat('x', 5000))[0] === 413);

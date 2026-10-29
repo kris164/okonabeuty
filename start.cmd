@@ -1,9 +1,9 @@
 @echo off
 setlocal
 cd /d "%~dp0"
-set "NODE=node"
-if exist ".runtime\node.exe" set "NODE=%~dp0.runtime\node.exe"
-"%NODE%" setup.mjs
+set "PHP=php"
+if exist ".runtime\php\php.exe" set "PHP=%~dp0.runtime\php\php.exe"
+"%PHP%" setup.php
 if errorlevel 1 exit /b 1
-"%NODE%" --env-file=.env server.mjs
+"%PHP%" -S 127.0.0.1:3000 -t www router.php
 exit /b %errorlevel%

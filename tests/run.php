@@ -1,0 +1,401 @@
+<?php
+declare(strict_types=1);
+
+require dirname(__DIR__) . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'http.php';
+
+use Misseye\BookingStore;
+use Misseye\HttpError;
+use Misseye\JsonFile;
+
+$root = dirname(__DIR__);
+$temporary = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'misseye-php-test-' . bin2hex(random_bytes(8));
+if (!mkdir($temporary, 0700)) {
+    throw new RuntimeException('Cannot create test directory.');
+}
+$failures = 0;
+$count = 0;
+$now = new DateTimeImmutable('2026-10-29T06:00:00Z');
+$wa = [
+    'access_token' => 'fake-test-token', 'phone_number_id' => '123', 'graph_version' => 'v99.0',
+    'template_name' => 'reservation', 'template_language' => 'pl',
+];
+
+function check(bool $value, string $message = 'Assertion failed'): void
+{
+    if (!$value) {
+        throw new RuntimeException($message);
+    }
+}
+
+function expect(callable $operation, ?int $status = null, ?string $class = null): void
+{
+    try {
+        $operation();
+    } catch (Throwable $error) {
+        if ($status !== null) {
+            check($error instanceof HttpError && $error->status === $status, 'Unexpected HTTP error: ' . $error->getMessage());
+        }
+        if ($class !== null) {
+            check($error instanceof $class, 'Unexpected exception type: ' . get_class($error));
+        }
+        return;
+    }
+    throw new RuntimeException('Expected an exception.');
+}
+
+function run(string $name, callable $test): void
+{
+    global $failures, $count;
+    $count++;
+    try {
+        $test();
+        echo "PASS $name\n";
+    } catch (Throwable $error) {
+        $failures++;
+        fwrite(STDERR, "FAIL $name: {$error->getMessage()}\n{$error->getTraceAsString()}\n");
+    }
+}
+
+function input(array $changes = []): array
+{
+    return array_replace([
+        'requestId' => \Misseye\uuid(), 'date' => '2026-10-30', 'time' => '10:00', 'service' => 'smp',
+        'name' => 'Test', 'phone' => '+48123456789', 'consent' => true, 'whatsappConsent' => false,
+    ], $changes);
+}
+
+function store(string $name): BookingStore
+{
+    global $temporary;
+    $store = new BookingStore($temporary . DIRECTORY_SEPARATOR . $name . '.json');
+    $store->initialize();
+    return $store;
+}
+
+function request(string $base, string $path, string $method = 'GET', array $headers = [], string $body = ''): array
+{
+    $context = stream_context_create(['http' => [
+        'method' => $method, 'ignore_errors' => true, 'timeout' => 5,
+        'header' => implode("\r\n", $headers), 'content' => $body,
+    ]]);
+    $response = file_get_contents($base . $path, false, $context);
+    if ($response === false) {
+        throw new RuntimeException('HTTP test request failed.');
+    }
+    check(isset($http_response_header[0]) && preg_match('~HTTP/\S+ (\d+)~', $http_response_header[0], $match) === 1);
+    return [(int) $match[1], $response, $http_response_header];
+}
+
+function race(string $file, array $inputs): array
+{
+    global $temporary, $root;
+    $barrier = $temporary . DIRECTORY_SEPARATOR . 'barrier-' . bin2hex(random_bytes(6));
+    $children = [];
+    foreach ($inputs as $input) {
+        $process = proc_open(
+            [PHP_BINARY, $root . DIRECTORY_SEPARATOR . 'tests' . DIRECTORY_SEPARATOR . 'worker.php',
+                $file, $barrier, json_encode($input, JSON_THROW_ON_ERROR)],
+            [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']],
+            $pipes
+        );
+        if (!is_resource($process)) {
+            throw new RuntimeException('Cannot start concurrency test worker.');
+        }
+        fclose($pipes[0]);
+        $children[] = [$process, $pipes];
+    }
+    file_put_contents($barrier, 'start');
+    $statuses = [];
+    foreach ($children as [$process, $pipes]) {
+        $output = stream_get_contents($pipes[1]);
+        $errors = stream_get_contents($pipes[2]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        check(proc_close($process) === 0, 'Concurrency worker failed: ' . $errors);
+        $statuses[] = json_decode($output, true, 512, JSON_THROW_ON_ERROR)['status'];
+    }
+    unlink($barrier);
+    return $statuses;
+}
+
+try {
+    run('Warsaw time, DST, local midnight and 90 calendar days', function () use ($now): void {
+        check(\Misseye\instant('2026-10-23', '08:00') === 1000 * strtotime('2026-10-23T06:00:00Z'));
+        check(\Misseye\instant('2026-10-30', '08:00') === 1000 * strtotime('2026-10-30T07:00:00Z'));
+        check(\Misseye\instant('2027-03-29', '08:00') === 1000 * strtotime('2027-03-29T06:00:00Z'));
+        check(\Misseye\localDate(new DateTimeImmutable('2026-10-29T23:30:00Z')) === '2026-10-30');
+        check(\Misseye\lastDate($now) === '2027-01-27');
+        check(\Misseye\lastDate(new DateTimeImmutable('2026-09-01T22:30:00Z')) === '2026-12-01');
+    });
+
+    run('weekday and Saturday hours; Sunday, closing, past and invalid dates', function () use ($now): void {
+        $store = store('hours');
+        $slots = $store->availability('2026-10-30', 'smp', $now);
+        check(count($slots) === 24 && $slots[0] === '08:00' && end($slots) === '19:30');
+        $saturday = $store->availability('2026-10-31', 'brwi', $now);
+        check(count($saturday) === 20 && $saturday[0] === '10:00');
+        check($store->availability('2026-11-01', 'smp', $now) === []);
+        foreach (['2026-10-28', '2027-01-28', '2026-02-30'] as $date) {
+            expect(fn () => $store->availability($date, 'smp', $now), 400);
+        }
+        expect(fn () => $store->availability('2026-10-30', 'unknown', $now), 400);
+        check(!in_array('08:00', $store->availability('2026-10-29', 'smp', new DateTimeImmutable('2026-10-29T07:00:00Z')), true));
+    });
+
+    run('reservation, cross-service collision, idempotency and cancellation', function () use ($now): void {
+        $store = store('booking');
+        $data = input();
+        $saved = $store->reserve($data, false, $now);
+        check($saved['created'] && $saved['booking']['notification'] === 'not_requested');
+        check(!in_array('10:00', $store->availability($data['date'], 'brwi', $now), true));
+        expect(fn () => $store->reserve(input(['service' => 'brwi']), false, $now), 409);
+        $retry = $store->reserve($data, false, $now);
+        check(!$retry['created'] && $retry['booking']['id'] === $saved['booking']['id']);
+        expect(fn () => $store->reserve(array_replace($data, ['time' => '11:00']), false, $now), 409);
+        $store->cancel($saved['booking']['id']);
+        check(in_array('10:00', $store->availability($data['date'], 'brwi', $now), true));
+        expect(fn () => $store->reserve($data, false, $now), 409);
+        check($store->reserve(input(['service' => 'brwi']), false, $now)['created']);
+        expect(fn () => $store->cancel(\Misseye\uuid()), 404);
+    });
+
+    run('input validation, off-grid hours, Sunday and no partial writes', function () use ($now): void {
+        $store = store('invalid');
+        foreach ([
+            ['name' => ''], ['phone' => '123'], ['consent' => false], ['whatsappConsent' => 'yes'],
+            ['requestId' => 'x'], ['date' => 'bad'], ['time' => '25:30'],
+        ] as $change) {
+            expect(fn () => $store->reserve(input($change), false, $now), 400);
+        }
+        foreach ([['time' => '10:15'], ['time' => '20:00'], ['time' => '07:30'],
+            ['date' => '2026-11-01'], ['date' => '2026-10-31', 'time' => '08:00']] as $change) {
+            expect(fn () => $store->reserve(input($change), false, $now), 409);
+        }
+        check($store->list('2026-10-30') === []);
+    });
+
+    run('JSON survives reopening, preserves records and hides private fields', function () use ($now, $temporary): void {
+        $store = store('persist');
+        $booking = $store->reserve(input(['name' => 'Żaneta']), false, $now)['booking'];
+        $reopened = new BookingStore($temporary . DIRECTORY_SEPARATOR . 'persist.json');
+        check($reopened->get($booking['id']) === $booking);
+        $public = \Misseye\publicBooking($booking);
+        check(array_intersect_key($public, array_flip(['phone', 'name', 'request_id'])) === []);
+        check(str_starts_with($public['whatsappUrl'], 'https://wa.me/48696293848?text='));
+        check(str_contains(rawurldecode($public['whatsappUrl']), $booking['id']));
+        $document = json_decode(file_get_contents($temporary . DIRECTORY_SEPARATOR . 'persist.json'), true, 512, JSON_THROW_ON_ERROR);
+        check($document['version'] === 1 && count($document['bookings']) === 1);
+    });
+
+    run('corrupt, malformed and missing storage fail explicitly without replacement', function () use ($now, $temporary): void {
+        store('corrupt');
+        $path = $temporary . DIRECTORY_SEPARATOR . 'corrupt.json';
+        file_put_contents($path, '{broken');
+        $store = new BookingStore($path);
+        expect(fn () => $store->availability('2026-10-30', 'smp', $now), null, JsonException::class);
+        expect(fn () => $store->reserve(input(), false, $now), null, JsonException::class);
+        check(file_get_contents($path) === '{broken');
+        file_put_contents($path, '{"version":99,"bookings":[]}');
+        expect(fn () => $store->initialize(), null, RuntimeException::class);
+        check(file_get_contents($path) === '{"version":99,"bookings":[]}');
+        unlink($path);
+        expect(fn () => $store->availability('2026-10-30', 'smp', $now), null, RuntimeException::class);
+        check(!is_file($path));
+    });
+
+    run('failed transaction preserves JSON bytes; lock is released after failure', function () use ($now, $temporary): void {
+        $store = store('rollback');
+        $store->reserve(input(), false, $now);
+        $path = $temporary . DIRECTORY_SEPARATOR . 'rollback.json';
+        $before = file_get_contents($path);
+        $file = new JsonFile($path, \Misseye\validateBookings(...));
+        expect(fn () => $file->write(static function (array &$data): void {
+            $data['bookings'] = [];
+            throw new RuntimeException('Simulated failure before commit');
+        }), null, RuntimeException::class);
+        check(file_get_contents($path) === $before);
+        check($store->reserve(input(['time' => '11:00']), false, $now)['created']);
+        check(glob($path . '.*.tmp') === []);
+    });
+
+    run('separate PHP processes cannot double-book or lose independent writes', function () use ($temporary): void {
+        $store = store('race');
+        $path = $temporary . DIRECTORY_SEPARATOR . 'race.json';
+        $inputs = [];
+        for ($i = 0; $i < 8; $i++) {
+            $inputs[] = input(['service' => $i % 2 ? 'brwi' : 'smp']);
+        }
+        $statuses = race($path, $inputs);
+        check(count(array_filter($statuses, static fn ($s) => $s === 201)) === 1);
+        check(count(array_filter($statuses, static fn ($s) => $s === 409)) === 7);
+        $inputs = [];
+        foreach (['11:00', '11:30', '12:00', '12:30'] as $time) {
+            $inputs[] = input(['time' => $time]);
+        }
+        check(race($path, $inputs) === [201, 201, 201, 201]);
+        check(count($store->list('2026-10-30')) === 5);
+        $same = input(['time' => '13:00']);
+        $retries = race($path, array_fill(0, 4, $same));
+        check(count(array_filter($retries, static fn ($s) => $s === 201)) === 1);
+        check(count(array_filter($retries, static fn ($s) => $s === 200)) === 3);
+        check(count($store->list('2026-10-30')) === 6);
+    });
+
+    run('WhatsApp stays disabled only for explicitly empty configuration', function () use ($wa): void {
+        $empty = array_replace($wa, [
+            'access_token' => '', 'phone_number_id' => '', 'graph_version' => '', 'template_name' => '',
+        ]);
+        check(\Misseye\whatsappConfig($empty) === null);
+        expect(fn () => \Misseye\whatsappConfig(array_replace($empty, ['access_token' => 'fake-token'])), null, RuntimeException::class);
+        expect(fn () => \Misseye\whatsappConfig(array_replace($wa, ['phone_number_id' => '../invalid'])), null, RuntimeException::class);
+        expect(fn () => \Misseye\whatsappConfig([]), null, RuntimeException::class);
+        check(\Misseye\whatsappConfig($wa) === $wa);
+    });
+
+    run('WhatsApp template, opt-in and one claim per notification', function () use ($now, $wa): void {
+        $store = store('notify');
+        $booking = $store->reserve(input(['whatsappConsent' => true]), true, $now)['booking'];
+        $calls = 0;
+        $sender = static function ($config, $payload) use (&$calls): array {
+            $calls++;
+            check($payload['to'] === '48123456789' && $payload['type'] === 'template');
+            check(count($payload['template']['components'][0]['parameters']) === 4);
+            return ['status' => 200, 'body' => '{"messages":[{"id":"wamid.test"}]}'];
+        };
+        \Misseye\notify($store, $booking['id'], $wa, $sender);
+        \Misseye\notify($store, $booking['id'], $wa, $sender);
+        check($calls === 1 && $store->get($booking['id'])['notification'] === 'accepted');
+        $other = $store->reserve(input(['time' => '11:00']), true, $now)['booking'];
+        \Misseye\notify($store, $other['id'], $wa, $sender);
+        check($calls === 1);
+        $unconfigured = $store->reserve(input(['time' => '12:00', 'whatsappConsent' => true]), false, $now)['booking'];
+        check($unconfigured['notification'] === 'unconfigured');
+    });
+
+    run('provider failures keep reservations and interrupted messages recover safely', function () use ($now, $wa): void {
+        $store = store('notify-errors');
+        $rejected = $store->reserve(input(['whatsappConsent' => true]), true, $now)['booking'];
+        \Misseye\notify($store, $rejected['id'], $wa, static fn () => ['status' => 400, 'body' => '{}']);
+        check($store->get($rejected['id'])['notification'] === 'failed');
+        $uncertain = $store->reserve(input(['time' => '11:00', 'whatsappConsent' => true]), true, $now)['booking'];
+        \Misseye\notify($store, $uncertain['id'], $wa, static function (): array {
+            throw new RuntimeException('Simulated transport timeout');
+        });
+        check($store->get($uncertain['id'])['notification'] === 'unknown');
+        check($store->get($uncertain['id'])['status'] === 'confirmed');
+        $interrupted = $store->reserve(input(['time' => '12:00', 'whatsappConsent' => true]), true, $now)['booking'];
+        $store->claimNotification($interrupted['id']);
+        $store->recoverNotifications(true);
+        check($store->get($interrupted['id'])['notification'] === 'sending');
+        $store->recoverNotifications(true, \Misseye\milliseconds(new DateTimeImmutable()) + 121000);
+        check($store->get($interrupted['id'])['notification'] === 'unknown');
+        $pending = $store->reserve(input(['time' => '13:00', 'whatsappConsent' => true]), true, $now)['booking'];
+        $store->recoverNotifications(false);
+        check($store->get($pending['id'])['notification'] === 'unconfigured');
+    });
+
+    run('import preserves IDs and refuses existing data or overlapping appointments', function () use ($now): void {
+        $source = store('import-source');
+        $booking = $source->reserve(input(), false, $now)['booking'];
+        $target = store('import-target');
+        $target->import([$booking]);
+        check($target->get($booking['id']) === $booking);
+        expect(fn () => $target->import([]), null, RuntimeException::class);
+        $collision = array_replace($booking, ['id' => \Misseye\uuid(), 'request_id' => \Misseye\uuid()]);
+        $empty = store('import-collision');
+        expect(fn () => $empty->import([$booking, $collision]), null, RuntimeException::class);
+        check($empty->list('2026-10-30') === []);
+    });
+
+    run('HTTP API, auth, cancellation, private paths and request validation', function () use ($root, $temporary): void {
+        $socket = stream_socket_server('tcp://127.0.0.1:0', $errno, $error);
+        check($socket !== false, 'Cannot reserve test port');
+        $address = stream_socket_get_name($socket, false);
+        fclose($socket);
+        $base = 'http://' . $address;
+        $path = $temporary . DIRECTORY_SEPARATOR . 'http.json';
+        (new BookingStore($path))->initialize();
+        $configFile = $temporary . DIRECTORY_SEPARATOR . 'test-config.php';
+        $config = [
+            'origin' => $base, 'admin_token' => str_repeat('a', 48), 'data_file' => $path,
+            'whatsapp' => ['access_token' => '', 'phone_number_id' => '', 'graph_version' => '', 'template_name' => '', 'template_language' => 'pl'],
+        ];
+        file_put_contents($configFile, '<?php return ' . var_export($config, true) . ';');
+        $environment = getenv();
+        $environment['MISSEYE_CONFIG'] = $configFile;
+        $log = $temporary . DIRECTORY_SEPARATOR . 'http.log';
+        $process = proc_open(
+            [PHP_BINARY, '-S', $address, '-t', $root . DIRECTORY_SEPARATOR . 'www', $root . DIRECTORY_SEPARATOR . 'router.php'],
+            [0 => ['pipe', 'r'], 1 => ['file', $log, 'a'], 2 => ['file', $log, 'a']],
+            $pipes, $root, $environment
+        );
+        check(is_resource($process), 'Cannot start PHP HTTP test server');
+        fclose($pipes[0]);
+        try {
+            $ready = false;
+            for ($attempt = 0; $attempt < 50; $attempt++) {
+                $probe = @file_get_contents($base . '/api/config');
+                if ($probe !== false) {
+                    $ready = true;
+                    break;
+                }
+                usleep(100000);
+            }
+            check($ready, 'PHP server did not become ready: ' . file_get_contents($log));
+            $day = \Misseye\parseDate(\Misseye\localDate(new DateTimeImmutable()))->modify('+1 day');
+            if ($day->format('w') === '0') {
+                $day = $day->modify('+1 day');
+            }
+            $date = $day->format('Y-m-d');
+            $data = input(['date' => $date]);
+            $jsonHeaders = ['Content-Type: application/json'];
+            [$code, $body] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode($data, JSON_THROW_ON_ERROR));
+            check($code === 201, $body);
+            $saved = json_decode($body, true, 512, JSON_THROW_ON_ERROR)['booking'];
+            check(array_intersect_key($saved, array_flip(['phone', 'name'])) === []);
+            [$code, $body] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode($data, JSON_THROW_ON_ERROR));
+            check($code === 200 && json_decode($body, true)['booking']['id'] === $saved['id']);
+            [$code] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode(input(['date' => $date, 'service' => 'brwi']), JSON_THROW_ON_ERROR));
+            check($code === 409);
+            check(request($base, '/api/admin/bookings?date=' . $date)[0] === 401);
+            $auth = ['Authorization: Bearer ' . str_repeat('a', 48)];
+            [$code, $body] = request($base, '/api/admin/bookings?date=' . $date, 'GET', $auth);
+            check($code === 200 && count(json_decode($body, true)['bookings']) === 1);
+            check(request($base, '/api/admin/bookings/' . $saved['id'] . '/cancel', 'POST', $auth)[0] === 200);
+            [$code, $body] = request($base, '/api/availability?date=' . $date . '&service=smp');
+            check($code === 200 && in_array('10:00', json_decode($body, true)['slots'], true));
+            foreach (['/config.php', '/.env', '/data/bookings.json', '/app/booking.php', '/.git/config', '/.htaccess'] as $private) {
+                check(request($base, $private)[0] === 404, 'Private file exposed: ' . $private);
+            }
+            foreach (['/', '/admin', '/booking.js', '/booking.css', '/admin.js'] as $asset) {
+                check(request($base, $asset)[0] === 200, 'Asset missing: ' . $asset);
+            }
+            check(request($base, '/api/bookings', 'POST', [...$jsonHeaders, 'Origin: https://other.invalid'], '{}')[0] === 403);
+            check(request($base, '/api/bookings', 'POST', $jsonHeaders, '{')[0] === 400);
+            check(request($base, '/api/bookings', 'POST', $jsonHeaders, str_repeat('x', 5000))[0] === 413);
+            check(request($base, '/api/bookings', 'POST', ['Content-Type: text/plain'], '{}')[0] === 415);
+            check(request($base, '/api/availability?date[]=2026-10-30&service=smp')[0] === 400);
+            $config['data_file'] = $root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'bookings.json';
+            file_put_contents($configFile, '<?php return ' . var_export($config, true) . ';');
+            expect(fn () => \Misseye\loadConfig($configFile), null, RuntimeException::class);
+        } finally {
+            proc_terminate($process);
+            proc_close($process);
+        }
+    });
+} finally {
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($temporary, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::CHILD_FIRST
+    );
+    foreach ($iterator as $entry) {
+        if ($entry->isDir()) {
+            rmdir($entry->getPathname());
+        } else {
+            unlink($entry->getPathname());
+        }
+    }
+    rmdir($temporary);
+}
+echo "$count tests, $failures failures\n";
+exit($failures === 0 ? 0 : 1);

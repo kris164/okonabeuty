@@ -1,0 +1,18 @@
+Options -Indexes
+DirectoryIndex index.html
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteRule ^api(?:/.*)?$ index.php [END,QSA]
+RewriteRule ^admin/?$ admin.html [END]
+
+<FilesMatch "(?i)(^\.|\.(json|sqlite|lock|tmp|ini|log)$)">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set X-Frame-Options "DENY"
+    Header always set Cache-Control "no-store"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+</IfModule>

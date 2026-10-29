@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>MISSEYE — panel rezerwacji</title>
+  <link rel="stylesheet" href="/booking.css">
+  <script src="/admin.js" defer></script>
+</head>
+<body class="admin-page">
+  <a href="/">← Strona główna</a>
+  <h1>Panel rezerwacji</h1>
+  <form id="admin-login">
+    <label for="admin-key">Klucz dostępu właściciela</label>
+    <input class="admin-input" id="admin-key" type="password" autocomplete="current-password" required>
+    <p>Klucz jest przechowywany tylko w pamięci tej karty. Nie wpisuj go na współdzielonym komputerze.</p>
+    <button type="submit">Otwórz panel</button>
+  </form>
+  <p id="admin-status" role="status" aria-live="polite"></p>
+  <main id="admin-panel" hidden>
+    <div class="toolbar">
+      <label>Data wizyt <input class="admin-input" id="admin-date" type="date" required></label>
+      <button id="admin-refresh" type="button">Odśwież</button>
+      <button id="admin-logout" type="button">Wyloguj</button>
+    </div>
+    <p>Godziny w strefie Europe/Warsaw. Anulowanie odblokowuje termin, ale nie wysyła wiadomości do klienta. Poinformuj go osobno.</p>
+    <p>„Przyjęte przez WhatsApp” nie oznacza doręczenia. Status nieznany wymaga sprawdzenia w Meta; system nie ponawia wiadomości automatycznie.</p>
+    <div id="admin-bookings"></div>
+  </main>
+</body>
+</html>

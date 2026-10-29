@@ -1,0 +1,46 @@
+section[id]{scroll-margin-top:90px}
+.booking{background:var(--bg-soft)}
+.booking-layout{display:grid;grid-template-columns:1fr 1.5fr;gap:40px;margin-top:32px}
+.booking-note{color:var(--ink-dim);margin-bottom:20px}
+.booking-hours{list-style:none;margin:20px 0}
+.booking-hours li{padding:9px 0;border-bottom:1px solid var(--line)}
+.booking-form,.booking-result{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:30px}
+.booking-fields{border:0;min-width:0}
+.booking-form label:not(.check){display:block;margin-bottom:18px}
+.booking-form input:not([type=checkbox]),.booking-form select,.admin-input{
+  display:block;width:100%;margin-top:7px;padding:12px;border:1px solid var(--line);
+  border-radius:8px;background:var(--bg);color:var(--ink);font:inherit;color-scheme:dark;
+}
+.booking-form input:focus-visible,.booking-form select:focus-visible,button:focus-visible,a:focus-visible{
+  outline:2px solid var(--accent-2);outline-offset:3px;
+}
+.booking-form .check{display:flex;align-items:flex-start;gap:10px;font-size:.9rem;margin:18px 0}
+.check input{margin-top:6px;flex-shrink:0;accent-color:var(--accent)}
+.check a{text-decoration:underline}
+.slots{display:flex;flex-wrap:wrap;gap:9px;margin:12px 0 20px}
+.slot{border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:10px 15px;border-radius:8px;font:inherit;cursor:pointer}
+.slot[aria-pressed=true]{background:var(--accent-2);color:var(--bg);border-color:var(--accent-2)}
+button.btn{font-family:inherit;cursor:pointer;border:0}
+button:disabled{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
+.booking-status{margin:16px 0;white-space:pre-line}
+.booking-status[data-error=true]{color:#ffb4a8}
+.booking-result h3{font-size:1.6rem;color:var(--accent-2);margin-bottom:15px}
+.booking-result p{margin-bottom:15px}
+.booking-result .btn{margin-bottom:15px}
+.text-button{display:block;color:var(--accent-2);background:none;border:0;font:inherit;text-decoration:underline;cursor:pointer}
+.privacy{font-size:.9rem;color:var(--ink-dim);border-top:1px solid var(--line);margin-top:35px;padding-top:20px}
+.privacy h3{color:var(--ink);font-size:1.3rem;margin-bottom:10px}
+[hidden]{display:none!important}
+.admin-page{max-width:1000px;margin:0 auto;padding:32px 20px;background:#121010;color:#f3ece6;font:16px/1.6 system-ui,sans-serif}
+.admin-page a{color:#e8b893}
+.admin-page h1{font-size:2rem;margin:24px 0}
+.admin-page .admin-input{max-width:500px;background:#221e1c;color:#f3ece6;border:1px solid #c98a6b;margin:10px 0 20px}
+.admin-page button{padding:10px 16px;border:1px solid #c98a6b;background:#221e1c;color:#f3ece6;border-radius:8px;cursor:pointer}
+.admin-page .toolbar{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:24px 0}
+.appointment{border:1px solid #76513f;border-radius:12px;padding:20px;margin:18px 0}
+.appointment p{margin:8px 0}
+.appointment.cancelled{opacity:.7}
+.appointment .actions{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:15px}
+@media(max-width:760px){.booking-layout{grid-template-columns:1fr;gap:16px}.booking-form,.booking-result{padding:22px}}
+@media(max-width:380px){.nav .logo{font-size:1.1rem;letter-spacing:.2em}.nav .cta{font-size:.65rem;padding:8px 10px}.hero .badge{letter-spacing:.12em}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}

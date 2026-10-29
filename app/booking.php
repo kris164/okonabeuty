@@ -21,12 +21,33 @@ final class HttpError extends RuntimeException
     }
 }
 
-function services(): array
+function specialists(): array
 {
     return [
-        ['id' => 'smp', 'name' => 'Konsultacja SMP', 'minutes' => 30],
-        ['id' => 'brwi', 'name' => 'Konsultacja makijażu permanentnego brwi', 'minutes' => 30],
+        ['id' => 'misseye-1', 'name' => 'Specjalista MissEye', 'brand' => 'MissEye', 'location' => 'Września'],
+        [
+            'id' => 'pitstop-1', 'name' => 'Specjalista PitSTOP (@do_nails.beauty)', 'brand' => 'PitSTOP',
+            'location' => 'Września lub Poznań — lokalizacja ustalana z managerem',
+        ],
     ];
+}
+
+function services(): array
+{
+    $catalog = [
+        ['id' => 'smp', 'name' => 'Konsultacja SMP', 'minutes' => 30, 'specialistId' => 'misseye-1'],
+        ['id' => 'brwi', 'name' => 'Konsultacja PM — makijaż permanentny', 'minutes' => 30, 'specialistId' => 'misseye-1'],
+        ['id' => 'nails', 'name' => 'Konsultacja Nails art — dłonie', 'minutes' => 30, 'specialistId' => 'pitstop-1'],
+        ['id' => 'podologia', 'name' => 'Konsultacja podologiczna — stopy', 'minutes' => 30, 'specialistId' => 'pitstop-1'],
+    ];
+    $people = array_column(specialists(), null, 'id');
+    return array_map(static function (array $service) use ($people): array {
+        $person = $people[$service['specialistId']];
+        return [
+            ...$service, 'brand' => $person['brand'], 'specialist' => $person['name'],
+            'location' => $person['location'],
+        ];
+    }, $catalog);
 }
 
 function serviceFor(mixed $id): array
@@ -146,6 +167,15 @@ function normalize(mixed $input): array
     ];
 }
 
+function bookingSpecialist(array $booking): string
+{
+    $id = serviceFor($booking['service'])['specialistId'];
+    if (array_key_exists('specialist_id', $booking) && $booking['specialist_id'] !== $id) {
+        throw new RuntimeException('Booking specialist does not match the service.');
+    }
+    return $id;
+}
+
 function validateBookings(mixed $data): void
 {
     if (!is_array($data) || ($data['version'] ?? null) !== 1
@@ -182,14 +212,17 @@ function validateBookings(mixed $data): void
             throw new RuntimeException('Inconsistent booking records in JSON storage.');
         }
         $ids[$booking['id']] = $requests[$booking['request_id']] = true;
+        $specialist = bookingSpecialist($booking);
         if ($booking['status'] === 'confirmed') {
-            $intervals[] = [$booking['starts'], $booking['ends']];
+            $intervals[$specialist][] = [$booking['starts'], $booking['ends']];
         }
     }
-    usort($intervals, static fn ($a, $b) => $a[0] <=> $b[0]);
-    for ($i = 1; $i < count($intervals); $i++) {
-        if ($intervals[$i][0] < $intervals[$i - 1][1]) {
-            throw new RuntimeException('Overlapping bookings in JSON storage.');
+    foreach ($intervals as $calendar) {
+        usort($calendar, static fn ($a, $b) => $a[0] <=> $b[0]);
+        for ($i = 1; $i < count($calendar); $i++) {
+            if ($calendar[$i][0] < $calendar[$i - 1][1]) {
+                throw new RuntimeException('Overlapping bookings in a specialist calendar.');
+            }
         }
     }
 }
@@ -221,9 +254,12 @@ final class BookingStore
     private function available(array $data, mixed $date, mixed $service, DateTimeImmutable $now): array
     {
         $free = [];
-        foreach (schedule($date, serviceFor($service), $now) as $slot) {
+        $details = serviceFor($service);
+        foreach (schedule($date, $details, $now) as $slot) {
             foreach ($data['bookings'] as $booking) {
-                if ($booking['status'] === 'confirmed' && $slot['start'] < $booking['ends'] && $slot['end'] > $booking['starts']) {
+                if ($booking['status'] === 'confirmed'
+                    && bookingSpecialist($booking) === $details['specialistId']
+                    && $slot['start'] < $booking['ends'] && $slot['end'] > $booking['starts']) {
                     continue 2;
                 }
             }
@@ -264,6 +300,7 @@ final class BookingStore
             $booking = [
                 'id' => uuid(), 'request_id' => $request['requestId'],
                 'date' => $request['date'], 'time' => $request['time'], 'service' => $request['service'],
+                'specialist_id' => serviceFor($request['service'])['specialistId'],
                 'starts' => $start, 'ends' => $start + serviceFor($request['service'])['minutes'] * 60000,
                 'name' => $request['name'], 'phone' => $request['phone'],
                 'whatsapp_consent' => $request['whatsappConsent'], 'consent_at' => $stamp,
@@ -369,10 +406,13 @@ final class BookingStore
 function publicBooking(array $booking): array
 {
     $service = serviceFor($booking['service']);
-    $text = "Dzień dobry, mam rezerwację MISSEYE: {$service['name']}, {$booking['date']}, godz. {$booking['time']} (czas polski). Numer rezerwacji: {$booking['id']}.";
+    $text = "Dzień dobry, mam rezerwację {$service['brand']}: {$service['name']}, {$booking['date']}, godz. {$booking['time']} (czas polski). Miejsce: {$service['location']}. Numer rezerwacji: {$booking['id']}.";
     return [
         'id' => $booking['id'], 'date' => $booking['date'], 'time' => $booking['time'],
         'service' => $service['name'], 'minutes' => $service['minutes'], 'status' => $booking['status'],
+        'brand' => $service['brand'], 'specialist' => $service['specialist'],
+        'location' => $service['location'],
+        'specialistId' => bookingSpecialist($booking),
         'notification' => $booking['notification'],
         'whatsappUrl' => 'https://wa.me/' . WHATSAPP_NUMBER . '?text=' . rawurlencode($text),
     ];
@@ -439,6 +479,7 @@ function notify(BookingStore $store, string $id, ?array $config, ?callable $send
     if ($booking === null) {
         return;
     }
+    $service = serviceFor($booking['service']);
     $payload = [
         'messaging_product' => 'whatsapp', 'to' => substr($booking['phone'], 1), 'type' => 'template',
         'template' => [
@@ -446,7 +487,8 @@ function notify(BookingStore $store, string $id, ?array $config, ?callable $send
             'components' => [[
                 'type' => 'body', 'parameters' => array_map(
                     static fn ($text) => ['type' => 'text', 'text' => $text],
-                    [serviceFor($booking['service'])['name'], $booking['date'], $booking['time'], $booking['id']]
+                    [$service['brand'] . ' — ' . $service['name'] . ' (' . $service['location'] . ')',
+                        $booking['date'], $booking['time'], $booking['id']]
                 ),
             ]],
         ],

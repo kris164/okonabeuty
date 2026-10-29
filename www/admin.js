@@ -3,6 +3,7 @@ const panel = document.querySelector('#admin-panel');
 const date = document.querySelector('#admin-date');
 const status = document.querySelector('#admin-status');
 const list = document.querySelector('#admin-bookings');
+const specialistFilter = document.querySelector('#admin-specialist');
 let token = '';
 let sequence = 0;
 const notificationLabels = {
@@ -36,18 +37,33 @@ async function load() {
   list.replaceChildren();
   status.textContent = 'Wczytuję wizyty…';
   try {
-    const { bookings } = await request(`/api/admin/bookings?date=${encodeURIComponent(date.value)}`);
+    const { bookings, services, specialists } = await request(`/api/admin/bookings?date=${encodeURIComponent(date.value)}`);
     if (current !== sequence) return;
+    const selection = specialistFilter.value;
+    specialistFilter.replaceChildren(new Option('Obaj specjaliści', ''));
+    for (const person of specialists) {
+      specialistFilter.append(new Option(person.name, person.id));
+    }
+    specialistFilter.value = selection;
+    const serviceCatalog = new Map(services.map(item => [item.id, item]));
+    const visible = bookings.filter(booking => {
+      const details = serviceCatalog.get(booking.service);
+      if (!details) throw new Error('Nieznana usługa w rezerwacji. Skontaktuj się z administratorem.');
+      return !selection || details.specialistId === selection;
+    });
     panel.hidden = false;
     login.hidden = true;
-    status.textContent = bookings.length ? `Liczba wizyt: ${bookings.length}` : 'Brak wizyt w tym dniu.';
-    for (const booking of bookings) {
+    status.textContent = visible.length ? `Liczba wizyt w wybranym widoku: ${visible.length}` : 'Brak wizyt w tym widoku.';
+    for (const booking of visible) {
+      const details = serviceCatalog.get(booking.service);
       const card = document.createElement('article');
-      card.className = `appointment ${booking.status}`;
+      card.className = `appointment ${booking.status} ${details.specialistId}`;
       const heading = document.createElement('h2');
       heading.textContent = `${booking.time} — ${booking.name}`;
       card.append(heading);
-      paragraph(card, `${booking.service === 'smp' ? 'Konsultacja SMP' : 'Konsultacja brwi'} · 30 min`);
+      paragraph(card, `${details.brand} · ${details.name} · ${details.minutes} min`);
+      paragraph(card, details.specialist);
+      paragraph(card, `Miejsce: ${details.location}`);
       paragraph(card, `Telefon: ${booking.phone}`);
       paragraph(card, `Status: ${booking.status === 'confirmed' ? 'Zarezerwowana' : 'Anulowana'}`);
       paragraph(card, `WhatsApp: ${notificationLabels[booking.notification]}`);
@@ -102,10 +118,12 @@ login.addEventListener('submit', async event => {
   await load();
 });
 date.addEventListener('change', load);
+specialistFilter.addEventListener('change', load);
 document.querySelector('#admin-refresh').addEventListener('click', load);
 document.querySelector('#admin-logout').addEventListener('click', () => {
   ++sequence;
   token = '';
+  specialistFilter.replaceChildren(new Option('Obaj specjaliści', ''));
   list.replaceChildren();
   status.textContent = 'Wylogowano.';
   panel.hidden = true;

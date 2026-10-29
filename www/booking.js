@@ -13,6 +13,7 @@ let submitting = false;
 let frozenRequest = null;
 let config;
 let activeBookingId = '';
+let requestedService = '';
 
 function message(text, error = false) {
   status.textContent = text;
@@ -42,6 +43,16 @@ function updateSubmit() {
 }
 
 async function loadSlots() {
+  const details = config.services.find(item => item.id === service.value);
+  if (!details) {
+    message('Nieprawidłowa usługa. Odśwież stronę lub skontaktuj się z managerem.', true);
+    selectedTime = '';
+    slots.replaceChildren();
+    updateSubmit();
+    return;
+  }
+  document.querySelector('#booking-provider').textContent =
+    `${details.specialist} · ${details.minutes} min. ${details.location}. Termin blokuje tylko kalendarz tej osoby.`;
   const sequence = ++loadSequence;
   selectedTime = '';
   slots.replaceChildren();
@@ -134,7 +145,7 @@ form.addEventListener('submit', async event => {
       body: JSON.stringify(frozenRequest),
     });
     document.querySelector('#booking-summary').textContent =
-      `${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski), ${booking.minutes} minut.`;
+      `${booking.brand} · ${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski), ${booking.minutes} minut. ${booking.specialist}. Miejsce: ${booking.location}.`;
     document.querySelector('#booking-reference').textContent = `Numer rezerwacji: ${booking.id}`;
     document.querySelector('#booking-notification').textContent = notificationMessages[booking.notification];
     document.querySelector('#booking-whatsapp').href = booking.whatsappUrl;
@@ -176,6 +187,15 @@ document.querySelector('#booking-new').addEventListener('click', () => {
 });
 service.addEventListener('change', loadSlots);
 date.addEventListener('change', loadSlots);
+for (const link of document.querySelectorAll('[data-service]')) {
+  link.addEventListener('click', () => {
+    if (submitting || frozenRequest || !result.hidden) return;
+    requestedService = link.dataset.service;
+    if (!config) return;
+    service.value = requestedService;
+    loadSlots();
+  });
+}
 
 async function init() {
   if (location.protocol === 'file:') {
@@ -184,12 +204,18 @@ async function init() {
   }
   try {
     config = await api('/api/config');
-    for (const item of config.services) {
-      const option = document.createElement('option');
-      option.value = item.id;
-      option.textContent = `${item.name} (${item.minutes} min)`;
-      service.append(option);
+    for (const person of config.specialists) {
+      const group = document.createElement('optgroup');
+      group.label = person.brand;
+      for (const item of config.services.filter(item => item.specialistId === person.id)) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.name} (${item.minutes} min)`;
+        group.append(option);
+      }
+      service.append(group);
     }
+    if (config.services.some(item => item.id === requestedService)) service.value = requestedService;
     date.min = config.today;
     date.max = config.maxDate;
     date.value = config.today;

@@ -4,13 +4,13 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>MISSEYE — panel rezerwacji</title>
+  <title>MissEye × PitSTOP — panel managera</title>
   <link rel="stylesheet" href="/booking.css">
   <script src="/admin.js" defer></script>
 </head>
 <body class="admin-page">
   <a href="/">← Strona główna</a>
-  <h1>Panel rezerwacji</h1>
+  <h1>MissEye × PitSTOP — panel managera</h1>
   <form id="admin-login">
     <label for="admin-key">Klucz dostępu właściciela</label>
     <input class="admin-input" id="admin-key" type="password" autocomplete="current-password" required>
@@ -21,10 +21,11 @@
   <main id="admin-panel" hidden>
     <div class="toolbar">
       <label>Data wizyt <input class="admin-input" id="admin-date" type="date" required></label>
+      <label>Kalendarz <select class="admin-input" id="admin-specialist"><option value="">Obaj specjaliści</option></select></label>
       <button id="admin-refresh" type="button">Odśwież</button>
       <button id="admin-logout" type="button">Wyloguj</button>
     </div>
-    <p>Godziny w strefie Europe/Warsaw. Anulowanie odblokowuje termin, ale nie wysyła wiadomości do klienta. Poinformuj go osobno.</p>
+    <p>Dwa niezależne kalendarze, jeden manager. Konsultacje trwają 30 minut. Godziny w strefie Europe/Warsaw. Anulowanie odblokowuje termin tylko u danej osoby, ale nie wysyła wiadomości do klienta. Poinformuj go osobno.</p>
     <p>„Przyjęte przez WhatsApp” nie oznacza doręczenia. Status nieznany wymaga sprawdzenia w Meta; system nie ponawia wiadomości automatycznie.</p>
     <div id="admin-bookings"></div>
   </main>

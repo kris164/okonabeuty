@@ -1,4 +1,4 @@
-# MISSEYE — PHP + JSON dla hostingu WWW OVH
+# MissEye × PitSTOP — PHP + JSON dla hostingu WWW OVH
 
 System działa na **PHP 8.2+ (64-bit)**. Nie wymaga Node.js, MySQL,
 SQLite, Composera ani zewnętrznych bibliotek do działania na hostingu.
@@ -8,6 +8,46 @@ oraz skonfigurowanego konta Meta Cloud API.
 Rezerwowane są **30-minutowe konsultacje**, nie pełne zabiegi:
 pn.–pt. 08:00–20:00, sob. 10:00–20:00. Niedziele są do uzgodnienia
 przez WhatsApp. Czas Europe/Warsaw, horyzont 90 dni kalendarzowych.
+
+## Dwie marki, dwa kalendarze
+
+- **MissEye**: SMP i PM (makijaż permanentny); specjalista `misseye-1`.
+- **PitSTOP**: Nails art (dłonie) i podologia; specjalista `pitstop-1`,
+  profil Instagram [@do_nails.beauty](https://instagram.com/do_nails.beauty).
+- MissEye przyjmuje we Wrześni. PitSTOP: **Września lub Poznań — lokalizacja
+  ustalana z managerem**. Rezerwacja online blokuje termin, nie potwierdza
+  konkretnego adresu. Miejsce należy uzgodnić przed wizytą.
+- Oba miasta PitSTOP korzystają z jednego kalendarza tej samej osoby.
+  Informacja o lokalizacji jest widoczna przy wyborze usługi, w potwierdzeniu,
+  panelu managera i wiadomościach WhatsApp. Nie ma oddzielnych slotów miast.
+- Wszystkie cztery usługi to konsultacje po 30 minut, nie pełne zabiegi.
+- Usługi tej samej osoby blokują jej wspólny kalendarz. Różne osoby mogą
+  przyjmować o tej samej godzinie. Sprawdzenie i zapis nadal są jedną
+  transakcją pod blokadą pliku.
+- Manager korzysta ze wspólnego panelu z filtrem specjalisty oraz jednego
+  numeru telefonu i WhatsApp: **+48 696 293 848**.
+- Panel pokazuje obie marki; nie jest to system osobnych kont partnerów.
+  Automatyczne wiadomości nadal wymagają konfiguracji Meta.
+
+Katalog usług i przypisania osób znajdują się w `app/booking.php`.
+API `/api/config` zwraca `services` i `specialists`; specjalistę rezerwacji
+wyznacza serwer, nigdy pole przesłane przez klienta.
+
+Istniejący identyfikator `brwi` pozostaje technicznym identyfikatorem PM,
+żeby zachować stare rezerwacje i ich ponowienia. Schemat JSON pozostaje
+w wersji 1. Rekordy bez `specialist_id` należą do osoby przypisanej do
+ich usługi; nowe rekordy zapisują również `specialist_id`. Dotychczasowe
+rezerwacje SMP i brwi nadal blokują kalendarz MissEye, nie PitSTOP.
+Nie zmieniaj przypisania istniejącego identyfikatora usługi do innej osoby
+bez jawnej migracji. Stary kod z jednym kalendarzem nie obsłuży poprawnie
+równoległych wizyt — przed aktualizacją wykonaj kopię konfiguracji i danych.
+
+Strona przedstawia obie marki równolegle. Dotychczasowe filmy są oznaczone
+jako portfolio MissEye, nie PitSTOP. Sekcja „Dla specjalistów” opisuje
+**planowany** rozwój ogólnopolski: edukację, pozyskiwanie zapytań, marketing,
+szkolenia i sprzedaż. Nie udaje działającego katalogu, sklepu ani zapisów
+na kursy. Kontakt biznesowy otwiera wiadomość do managera w WhatsApp;
+nie zapisuje formularza partnerskiego w systemie.
 
 ## Struktura
 
@@ -91,7 +131,9 @@ certyfikatu dla Twojej domeny.
    `600`, przy tym samym właścicielu plików i procesie PHP. Nie używaj `777`.
 5. Otwórz `https://okonabeauty.pl/api/config`. Odpowiedź powinna zawierać
    usługi i daty, nigdy klucz panelu. Sprawdź rezerwację, panel `/admin`,
-   anulowanie oraz konflikt dwóch rezerwacji tej samej godziny.
+   anulowanie oraz konflikt dwóch usług tej samej osoby o jednej godzinie.
+   Sprawdź również, że MissEye i PitSTOP mogą zarezerwować tę godzinę
+   niezależnie i że anulowanie wizyty jednej osoby nie zwalnia drugiej.
 6. Zweryfikuj, że `/config.php`, `/data/bookings.json`, `/app/booking.php`
    i `/.env` zwracają **403 lub 404**, a nie zawartość plików.
 7. Przekieruj wariant `www` domeny do wybranego adresu. Formularz
@@ -144,9 +186,14 @@ W prywatnym `config.php` ustaw wszystkie pola `whatsapp`:
 - `template_name` i `template_language` (domyślnie `pl`).
 
 Szablon utility musi mieć cztery tekstowe parametry treści w kolejności:
-nazwa konsultacji, data, godzina, numer rezerwacji. Przykład:
-„MISSEYE: potwierdzamy rezerwację {{1}} dnia {{2}} o {{3}} (czas polski).
-Numer rezerwacji: {{4}}. Zmiany uzgodnisz z salonem.”
+marka i nazwa konsultacji z informacją o miejscu, data, godzina, numer rezerwacji. Przykład:
+„Potwierdzamy rezerwację {{1}} dnia {{2}} o {{3}} (czas polski).
+Numer rezerwacji: {{4}}. Zmiany uzgodnisz z managerem.”
+Pierwszy parametr zawiera np. „PitSTOP — Konsultacja podologiczna — stopy
+(Września lub Poznań — lokalizacja ustalana z managerem)”.
+Przed włączeniem wysyłki upewnij się, że zatwierdzony szablon i profil
+nadawcy są odpowiednie dla obu marek; nie używaj dla PitSTOP szablonu,
+który na stałe opisuje usługę jako wizytę wyłącznie w MissEye.
 
 Po włączeniu API formularz pokaże dobrowolną zgodę. Bez niej nie wysyła
 wiadomości. Potwierdzenie jest wysyłane podczas żądania rezerwacji

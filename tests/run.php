@@ -129,6 +129,26 @@ try {
         check(\Misseye\lastDate(new DateTimeImmutable('2026-09-01T22:30:00Z')) === '2026-12-01');
     });
 
+    run('four consultation services belong to two independent specialists', function () use ($now): void {
+        $services = \Misseye\services();
+        check(array_column($services, 'id') === ['smp', 'brwi', 'nails', 'podologia']);
+        check(count(\Misseye\specialists()) === 2);
+        foreach ($services as $service) {
+            check($service['minutes'] === 30);
+            check($service['specialistId'] === (in_array($service['id'], ['smp', 'brwi'], true) ? 'misseye-1' : 'pitstop-1'));
+            if ($service['specialistId'] === 'pitstop-1') {
+                check(str_contains($service['specialist'], '@do_nails.beauty'));
+                check($service['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
+            } else {
+                check($service['location'] === 'Września');
+            }
+            $calendar = store('hours-' . $service['id']);
+            check(count($calendar->availability('2026-10-30', $service['id'], $now)) === 24);
+            check(count($calendar->availability('2026-10-31', $service['id'], $now)) === 20);
+            check($calendar->availability('2026-11-01', $service['id'], $now) === []);
+        }
+    });
+
     run('weekday and Saturday hours; Sunday, closing, past and invalid dates', function () use ($now): void {
         $store = store('hours');
         $slots = $store->availability('2026-10-30', 'smp', $now);
@@ -164,7 +184,7 @@ try {
         $store = store('invalid');
         foreach ([
             ['name' => ''], ['phone' => '123'], ['consent' => false], ['whatsappConsent' => 'yes'],
-            ['requestId' => 'x'], ['date' => 'bad'], ['time' => '25:30'],
+            ['requestId' => 'x'], ['date' => 'bad'], ['time' => '25:30'], ['service' => 'unknown'],
         ] as $change) {
             expect(fn () => $store->reserve(input($change), false, $now), 400);
         }
@@ -173,6 +193,63 @@ try {
             expect(fn () => $store->reserve(input($change), false, $now), 409);
         }
         check($store->list('2026-10-30') === []);
+    });
+
+    run('parallel brands, same-person conflicts, cancellation and public confirmations', function () use ($now, $temporary): void {
+        $store = store('two-calendars');
+        $misseye = $store->reserve(input(), false, $now)['booking'];
+        $request = input(['service' => 'nails', 'specialistId' => 'misseye-1', 'specialist_id' => 'misseye-1']);
+        $pitstop = $store->reserve($request, false, $now)['booking'];
+        check($misseye['specialist_id'] === 'misseye-1' && $pitstop['specialist_id'] === 'pitstop-1');
+        check($misseye['starts'] === $pitstop['starts']);
+        expect(fn () => $store->reserve(input(['service' => 'brwi']), false, $now), 409);
+        expect(fn () => $store->reserve(input(['service' => 'podologia']), false, $now), 409);
+        check(!$store->reserve($request, false, $now)['created']);
+        expect(fn () => $store->reserve(array_replace($request, ['service' => 'podologia']), false, $now), 409);
+        $public = \Misseye\publicBooking($pitstop);
+        check($public['brand'] === 'PitSTOP' && $public['specialistId'] === 'pitstop-1');
+        check(str_contains($public['specialist'], '@do_nails.beauty'));
+        check($public['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
+        check(str_contains(rawurldecode($public['whatsappUrl']), 'PitSTOP'));
+        check(str_contains(rawurldecode($public['whatsappUrl']), $public['location']));
+        check(\Misseye\publicBooking($misseye)['location'] === 'Września');
+        check(!str_contains(rawurldecode($public['whatsappUrl']), 'MISSEYE'));
+        $store->cancel($misseye['id']);
+        check(in_array('10:00', $store->availability('2026-10-30', 'brwi', $now), true));
+        check(!in_array('10:00', $store->availability('2026-10-30', 'podologia', $now), true));
+        check($store->reserve(input(['service' => 'brwi']), false, $now)['created']);
+        check($store->reserve(input(['service' => 'podologia', 'time' => '10:30']), false, $now)['created']);
+        $reopened = new BookingStore($temporary . DIRECTORY_SEPARATOR . 'two-calendars.json');
+        check(count($reopened->list('2026-10-30')) === 4);
+    });
+
+    run('legacy JSON needs no rewrite and inconsistent specialist assignments fail explicitly', function () use ($now, $temporary): void {
+        $source = store('legacy-source');
+        $old = $source->reserve(input(['service' => 'brwi']), false, $now)['booking'];
+        unset($old['specialist_id']);
+        $store = store('legacy-target');
+        $store->import([$old]);
+        $path = $temporary . DIRECTORY_SEPARATOR . 'legacy-target.json';
+        $before = file_get_contents($path);
+        $store->initialize();
+        check(!in_array('10:00', $store->availability('2026-10-30', 'smp', $now), true));
+        check(in_array('10:00', $store->availability('2026-10-30', 'nails', $now), true));
+        check(\Misseye\publicBooking($store->get($old['id']))['specialistId'] === 'misseye-1');
+        check(file_get_contents($path) === $before);
+        $store->reserve(input(['service' => 'nails']), false, $now);
+        check($store->get($old['id']) === $old);
+        $invalid = $old;
+        $invalid['specialist_id'] = 'pitstop-1';
+        expect(fn () => \Misseye\validateBookings(['version' => 1, 'bookings' => [$invalid]]), null, RuntimeException::class);
+        $invalid['status'] = 'cancelled';
+        expect(fn () => \Misseye\validateBookings(['version' => 1, 'bookings' => [$invalid]]), null, RuntimeException::class);
+        $overlap = $old;
+        $overlap['id'] = \Misseye\uuid();
+        $overlap['request_id'] = \Misseye\uuid();
+        $overlap['service'] = 'smp';
+        expect(fn () => \Misseye\validateBookings(['version' => 1, 'bookings' => [$old, $overlap]]), null, RuntimeException::class);
+        $overlap['service'] = 'nails';
+        \Misseye\validateBookings(['version' => 1, 'bookings' => [$old, $overlap]]);
     });
 
     run('JSON survives reopening, preserves records and hides private fields', function () use ($now, $temporary): void {
@@ -253,6 +330,20 @@ try {
         check(\Misseye\whatsappConfig($wa) === $wa);
     });
 
+    run('concurrent requests reserve exactly one slot per specialist', function () use ($temporary): void {
+        $store = store('dual-race');
+        $inputs = [];
+        foreach (['smp', 'brwi', 'nails', 'podologia', 'smp', 'brwi', 'nails', 'podologia'] as $service) {
+            $inputs[] = input(['service' => $service]);
+        }
+        $statuses = race($temporary . DIRECTORY_SEPARATOR . 'dual-race.json', $inputs);
+        check(count(array_filter($statuses, static fn ($s) => $s === 201)) === 2);
+        check(count(array_filter($statuses, static fn ($s) => $s === 409)) === 6);
+        $bookings = $store->list('2026-10-30');
+        check(count($bookings) === 2);
+        check(count(array_unique(array_column($bookings, 'specialist_id'))) === 2);
+    });
+
     run('WhatsApp template, opt-in and one claim per notification', function () use ($now, $wa): void {
         $store = store('notify');
         $booking = $store->reserve(input(['whatsappConsent' => true]), true, $now)['booking'];
@@ -260,7 +351,9 @@ try {
         $sender = static function ($config, $payload) use (&$calls): array {
             $calls++;
             check($payload['to'] === '48123456789' && $payload['type'] === 'template');
-            check(count($payload['template']['components'][0]['parameters']) === 4);
+            $parameters = $payload['template']['components'][0]['parameters'];
+            check(count($parameters) === 4);
+            check(str_starts_with($parameters[0]['text'], 'MissEye — '));
             return ['status' => 200, 'body' => '{"messages":[{"id":"wamid.test"}]}'];
         };
         \Misseye\notify($store, $booking['id'], $wa, $sender);
@@ -271,6 +364,13 @@ try {
         check($calls === 1);
         $unconfigured = $store->reserve(input(['time' => '12:00', 'whatsappConsent' => true]), false, $now)['booking'];
         check($unconfigured['notification'] === 'unconfigured');
+        $pitstop = $store->reserve(input(['service' => 'podologia', 'whatsappConsent' => true]), true, $now)['booking'];
+        \Misseye\notify($store, $pitstop['id'], $wa, static function ($config, $payload): array {
+            check(str_starts_with($payload['template']['components'][0]['parameters'][0]['text'], 'PitSTOP — '));
+            check(str_contains($payload['template']['components'][0]['parameters'][0]['text'], 'Września lub Poznań — lokalizacja ustalana z managerem'));
+            return ['status' => 200, 'body' => '{"messages":[{"id":"wamid.pitstop.test"}]}'];
+        });
+        check($store->get($pitstop['id'])['notification'] === 'accepted');
     });
 
     run('provider failures keep reservations and interrupted messages recover safely', function () use ($now, $wa): void {
@@ -320,6 +420,41 @@ try {
         expect(fn () => \Misseye\mediaRange('bytes=10-5', 1000), 416);
         expect(fn () => \Misseye\mediaRange('bytes=-0', 1000), 416);
         expect(fn () => \Misseye\mediaRange('bytes=0-', 0), 416);
+    });
+
+    run('brand proposal links four real services and separates planned platform features', function () use ($root): void {
+        $html = file_get_contents($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'index.html');
+        $document = new DOMDocument();
+        $document->loadHTML($html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new DOMXPath($document);
+        $links = $xpath->query('//a[@data-service]');
+        check($links->length === 4);
+        $ids = [];
+        foreach ($links as $link) {
+            $ids[] = $link->getAttribute('data-service');
+            check($link->getAttribute('href') === '#rezerwacja');
+            \Misseye\serviceFor($link->getAttribute('data-service'));
+        }
+        check(count(array_unique($ids)) === 4);
+        $elementIds = [];
+        foreach ($xpath->query('//*[@id]') as $element) {
+            $id = $element->getAttribute('id');
+            check(!isset($elementIds[$id]), 'Duplicate element ID: ' . $id);
+            $elementIds[$id] = true;
+        }
+        foreach (['misseye', 'pitstop', 'dla-specjalistow', 'booking-provider'] as $id) {
+            check(isset($elementIds[$id]));
+        }
+        check(str_contains($html, 'Platforma ogólnopolska jest w planach'));
+        check(str_contains($html, 'Portfolio MissEye'));
+        $profileLinks = $xpath->query('//a[@href="https://instagram.com/do_nails.beauty"]');
+        check($profileLinks->length === 3);
+        foreach ($profileLinks as $link) {
+            check($link->getAttribute('target') === '_blank');
+            check(str_contains($link->getAttribute('rel'), 'noopener'));
+        }
+        check(str_contains($html, 'Rezerwacja online dotyczy terminu, nie wyboru adresu.'));
+        check(!str_contains($html, '572 799 429'));
     });
 
     run('five video cards have posters, controls and no automatic playback', function () use ($root): void {
@@ -381,6 +516,8 @@ try {
                 usleep(100000);
             }
             check($ready, 'PHP server did not become ready: ' . file_get_contents($log));
+            $catalog = json_decode($probe, true, 512, JSON_THROW_ON_ERROR);
+            check(count($catalog['services']) === 4 && count($catalog['specialists']) === 2);
             $day = \Misseye\parseDate(\Misseye\localDate(new DateTimeImmutable()))->modify('+1 day');
             if ($day->format('w') === '0') {
                 $day = $day->modify('+1 day');
@@ -396,13 +533,21 @@ try {
             check($code === 200 && json_decode($body, true)['booking']['id'] === $saved['id']);
             [$code] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode(input(['date' => $date, 'service' => 'brwi']), JSON_THROW_ON_ERROR));
             check($code === 409);
+            [$code, $body] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode(input(['date' => $date, 'service' => 'nails']), JSON_THROW_ON_ERROR));
+            check($code === 201 && json_decode($body, true)['booking']['brand'] === 'PitSTOP');
+            [$code] = request($base, '/api/bookings', 'POST', $jsonHeaders, json_encode(input(['date' => $date, 'service' => 'podologia']), JSON_THROW_ON_ERROR));
+            check($code === 409);
             check(request($base, '/api/admin/bookings?date=' . $date)[0] === 401);
             $auth = ['Authorization: Bearer ' . str_repeat('a', 48)];
             [$code, $body] = request($base, '/api/admin/bookings?date=' . $date, 'GET', $auth);
-            check($code === 200 && count(json_decode($body, true)['bookings']) === 1);
+            $manager = json_decode($body, true);
+            check($code === 200 && count($manager['bookings']) === 2);
+            check(count($manager['services']) === 4 && count($manager['specialists']) === 2);
             check(request($base, '/api/admin/bookings/' . $saved['id'] . '/cancel', 'POST', $auth)[0] === 200);
             [$code, $body] = request($base, '/api/availability?date=' . $date . '&service=smp');
             check($code === 200 && in_array('10:00', json_decode($body, true)['slots'], true));
+            [$code, $body] = request($base, '/api/availability?date=' . $date . '&service=podologia');
+            check($code === 200 && !in_array('10:00', json_decode($body, true)['slots'], true));
             foreach (['/config.php', '/.env', '/data/bookings.json', '/app/booking.php', '/.git/config', '/.htaccess'] as $private) {
                 check(request($base, $private)[0] === 404, 'Private file exposed: ' . $private);
             }

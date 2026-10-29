@@ -118,7 +118,8 @@ function handleApi(
     if ($method === 'GET' && $path === '/api/config') {
         $now = new DateTimeImmutable();
         return [200, [
-            'services' => services(), 'today' => localDate($now), 'maxDate' => lastDate($now),
+            'services' => services(), 'specialists' => specialists(),
+            'today' => localDate($now), 'maxDate' => lastDate($now),
             'timezone' => ZONE, 'whatsappNumber' => WHATSAPP_NUMBER,
             'automatedWhatsApp' => $config['whatsapp'] !== null,
         ]];
@@ -150,7 +151,10 @@ function handleApi(
         return [$saved['created'] ? 201 : 200, ['booking' => publicBooking($store->get($saved['booking']['id']))]];
     }
     if ($method === 'GET' && $path === '/api/admin/bookings') {
-        return [200, ['bookings' => $store->list($query['date'] ?? null)]];
+        return [200, [
+            'bookings' => $store->list($query['date'] ?? null),
+            'services' => services(), 'specialists' => specialists(),
+        ]];
     }
     if ($method === 'POST' && preg_match('~\A/api/admin/bookings/([a-f0-9-]{36})/cancel\z~', $path, $match)) {
         return [200, ['booking' => $store->cancel($match[1])]];

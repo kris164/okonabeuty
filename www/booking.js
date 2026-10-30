@@ -36,22 +36,52 @@ function showOffer() {
     const title = document.createElement('h3');
     title.textContent = person.brand;
     section.append(title);
+    const list = document.createElement('dl');
+    list.className = 'offer-list';
     for (const item of config.services.filter(item => item.specialistId === person.id)) {
-      const line = document.createElement('p');
-      line.textContent = `${item.name}: ${item.priceLabel} · usługa ${item.minutes} min / kalendarz ${item.reservedMinutes} min`;
-      section.append(line);
+      const row = document.createElement('div');
+      const name = document.createElement('dt');
+      name.textContent = item.name;
+      const duration = document.createElement('small');
+      duration.textContent = `${item.minutes} min`;
+      name.append(duration);
+      const price = document.createElement('dd');
+      const amount = document.createElement('strong');
+      amount.textContent = item.firstConsultationFree ? 'Pierwsza GRATIS' : item.priceLabel;
+      price.append(amount);
+      if (item.firstConsultationFree) {
+        row.className = 'offer-consultation';
+        const next = document.createElement('small');
+        next.textContent = `Kolejne: ${item.priceLabel}`;
+        price.append(next);
+      }
+      row.append(name, price);
+      list.append(row);
     }
+    section.append(list);
     container.append(section);
   }
+  document.querySelector('#offer-status').hidden = true;
   const week = document.querySelector('#offer-week');
   week.replaceChildren();
   const labels = { manager: 'miejsce ustala manager', wrzesnia: 'Września', poznan: 'Poznań', closed: 'brak przyjęć' };
   config.offer.week.forEach((location, index) => {
     const item = document.createElement('li');
     const address = config.offer.addresses[location];
-    item.textContent = `${['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'][index]}: ${labels[location]}${address ? ` — ${address}` : ''}${index === 6 ? ' (bez zapisów online)' : ''}`;
+    const day = ['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'][index];
+    const hours = index === 5 ? '10:00–20:00' : '8:00–20:00';
+    const details = location === 'closed' ? labels[location]
+      : `${hours} · ${labels[location]}${address ? ` — ${address}` : ''}`;
+    item.textContent = index === 6 ? `${day}: brak zapisów online`
+      : `${day}: ${details}`;
     week.append(item);
   });
+}
+
+function consultationPrice(details, label) {
+  return details.firstConsultationFree
+    ? `Pierwsza konsultacja GRATIS (uprawnienie potwierdza manager). Kolejne: ${label}`
+    : label;
 }
 
 function offsetDate(value, days) {
@@ -99,6 +129,7 @@ async function loadSlots() {
   document.querySelector('#booking-provider').textContent =
     `${details.specialist} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min. ${details.location}. Termin blokuje tylko kalendarz tej osoby.`;
   const sequence = ++loadSequence;
+  document.querySelector('#booking-price').textContent = 'Sprawdzam cenę…';
   selectedTime = '';
   slots.replaceChildren();
   loading = true;
@@ -112,7 +143,7 @@ async function loadSlots() {
     if (sequence !== loadSequence) return;
     const times = availability.slots;
     config.offer.revision = availability.offerRevision;
-    document.querySelector('#booking-price').textContent = availability.priceLabel;
+    document.querySelector('#booking-price').textContent = consultationPrice(details, availability.priceLabel);
     document.querySelector('#booking-provider').textContent =
       `${details.specialist} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min. Miejsce w wybranym dniu: ${availability.location}.`;
     daysStrip.replaceChildren();
@@ -147,10 +178,13 @@ async function loadSlots() {
     }
     const sunday = new Date(`${date.value}T12:00:00Z`).getUTCDay() === 0;
     message(times.length ? 'Wybierz godzinę (czas polski).' : sunday
-      ? 'Niedziela: termin wyłącznie do uzgodnienia przez WhatsApp.'
+      ? 'Niedziela: brak zapisów online. Wybierz dzień od poniedziałku do soboty.'
       : 'Brak wolnych godzin. Wybierz inny dzień lub skontaktuj się przez WhatsApp.');
   } catch (error) {
-    if (sequence === loadSequence) message(`${error.message} Zmień datę, aby spróbować ponownie.`, true);
+    if (sequence === loadSequence) {
+      document.querySelector('#booking-price').textContent = 'Nie można potwierdzić ceny — skontaktuj się z managerem.';
+      message(`${error.message} Zmień datę, aby spróbować ponownie.`, true);
+    }
   } finally {
     if (sequence === loadSequence) {
       loading = false;
@@ -216,8 +250,9 @@ form.addEventListener('submit', async event => {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(frozenRequest),
     });
+    const details = config.services.find(item => item.id === frozenRequest.service);
     document.querySelector('#booking-summary').textContent =
-      `${booking.brand} · ${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski). Usługa: ${booking.minutes} min, czas zajęty w kalendarzu: ${booking.reservedMinutes} min. ${booking.specialist}. Miejsce: ${booking.location}. ${booking.priceLabel}.`;
+      `${booking.brand} · ${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski). Usługa: ${booking.minutes} min, czas zajęty w kalendarzu: ${booking.reservedMinutes} min. ${booking.specialist}. Miejsce: ${booking.location}. ${consultationPrice(details, booking.priceLabel)}.`;
     document.querySelector('#booking-reference').textContent = `Numer rezerwacji: ${booking.id}`;
     document.querySelector('#booking-notification').textContent = notificationMessages[booking.notification];
     document.querySelector('#booking-email-notification').textContent = booking.emailReminder === 'pending'
@@ -312,6 +347,7 @@ for (const link of document.querySelectorAll('[data-service]')) {
 
 async function init() {
   if (location.protocol === 'file:') {
+    document.querySelector('#offer-status').textContent = 'Cennik wymaga uruchomienia strony przez serwer. Ceny potwierdź z managerem.';
     message('Rezerwacje wymagają uruchomienia serwera. Otwórz stronę przez adres http://127.0.0.1:3000, a nie bezpośrednio z pliku.', true);
     return;
   }
@@ -324,7 +360,7 @@ async function init() {
       for (const item of config.services.filter(item => item.specialistId === person.id)) {
         const option = document.createElement('option');
         option.value = item.id;
-        option.textContent = `${item.name} (${item.minutes} min; rezerwacja ${item.reservedMinutes} min)`;
+        option.textContent = `${item.name}${item.firstConsultationFree ? ' — pierwsza GRATIS' : ''} (${item.minutes} min)`;
         group.append(option);
       }
       service.append(group);
@@ -345,6 +381,9 @@ async function init() {
     fields.disabled = false;
     await loadSlots();
   } catch (error) {
+    if (!document.querySelector('#offer-status').hidden) {
+      document.querySelector('#offer-status').textContent = `${error.message} Cennik jest chwilowo niedostępny — ceny potwierdź z managerem.`;
+    }
     message(`${error.message} Rezerwacje są chwilowo niedostępne — skontaktuj się przez WhatsApp.`, true);
   }
 }

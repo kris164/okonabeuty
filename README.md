@@ -6,28 +6,45 @@ Opcjonalna automatyczna wysyłka WhatsApp wymaga rozszerzenia PHP cURL
 oraz skonfigurowanego konta Meta Cloud API.
 
 Rezerwowane są **30-minutowe konsultacje oraz pełne zabiegi**:
-pn.–pt. 08:00–20:00, sob. 10:00–20:00. Niedziele są do uzgodnienia
-przez WhatsApp. Czas Europe/Warsaw, horyzont 90 dni kalendarzowych.
+u obu specjalistek: pn.–pt. 08:00–20:00, sob. 10:00–20:00.
+W niedziele brak zapisów online. Wspólny obszar to Września i Poznań;
+miejsce wizyty potwierdza manager. Czas Europe/Warsaw, horyzont 90 dni.
 
 ## Dwie marki, dwa kalendarze
 
-- **MissEye**: SMP i PM (makijaż permanentny); specjalista `misseye-1`.
-- **PitSTOP**: Nails art (dłonie) i podologia; specjalista `pitstop-1`,
+- **MissEye**: SMP i PM (makijaż permanentny); specjalistka `misseye-1`.
+- **PitSTOP / do_nails**: Nails art (dłonie) i podologia; specjalistka `pitstop-1`,
   profil Instagram [@do_nails.beauty](https://instagram.com/do_nails.beauty).
-- MissEye przyjmuje we Wrześni. PitSTOP domyślnie: **Września lub Poznań —
-  lokalizacja ustalana z managerem**. Manager może przypisać dni tygodnia
-  do miasta, podać publiczny adres lub wyłączyć przyjęcia w danym dniu.
+- Obie specjalistki mają ten sam obszar obsługi: **Września i Poznań**,
+  ale różne usługi i niezależne kalendarze. Domyślna informacja dla obu:
+  „Września lub Poznań — lokalizacja ustalana z managerem”.
+  Manager może przypisać dni tygodnia PitSTOP
+  do miasta, podać publiczny adres lub wyłączyć przyjęcia PitSTOP w danym dniu.
   Nieuzupełnione miejsca trzeba potwierdzić z managerem przed przyjazdem.
 - Oba miasta PitSTOP korzystają z jednego kalendarza tej samej osoby.
   Informacja o lokalizacji jest widoczna przy wyborze usługi, w potwierdzeniu,
   panelu managera i wiadomościach WhatsApp. Nie ma oddzielnych slotów miast.
 - Cztery dotychczasowe konsultacje nadal trwają po 30 minut. Dwanaście
   wariantów zabiegów ma własne czasy (tabela poniżej).
+- **Pierwsza konsultacja GRATIS** dotyczy obu specjalistek i czterech
+  rodzajów konsultacji, nie zabiegów. Uprawnienie potwierdza manager:
+  system nie identyfikuje automatycznie pierwszej wizyty i nie zeruje cen.
+  Edytowalne ceny konsultacji dotyczą kolejnych wizyt. Zapisane ceny
+  i historyczne rezerwacje pozostają bez zmian.
+  API katalogu oznacza konsultacje flagą `firstConsultationFree`.
+  Publiczny cennik jest zawsze rozwinięty: nazwa usługi, czas i cena
+  w osobnych polach; zaokrąglony czas zajęcia kalendarza pokazuje rezerwacja.
 - Usługi tej samej osoby blokują jej wspólny kalendarz. Różne osoby mogą
   przyjmować o tej samej godzinie. Sprawdzenie i zapis nadal są jedną
   transakcją pod blokadą pliku.
 - Manager korzysta ze wspólnego panelu z filtrem specjalisty oraz jednego
-  numeru telefonu i WhatsApp: **+48 665 638 033**.
+  numeru telefonu i WhatsApp: **+48 665 638 033**, widocznego także na obu
+  kartach specjalistek. Wspólny obszar nie oznacza wspólnego grafiku:
+  ustawienia dni PitSTOP nie zamykają ani nie przenoszą wizyt MissEye.
+  Istniejące wizyty zachowują wcześniej zapisane miejsce; rozszerzenie
+  opisu obszaru nie zmienia automatycznie umówionego adresu.
+  Starsze rezerwacje MissEye bez pola miejsca nadal wskazują Wrześnię
+  w panelu, potwierdzeniu i powiadomieniach, bez przepisywania JSON.
 - Panel pokazuje obie marki; nie jest to system osobnych kont partnerów.
   Automatyczne wiadomości nadal wymagają konfiguracji Meta.
 
@@ -46,11 +63,25 @@ równoległych wizyt — przed aktualizacją wykonaj kopię konfiguracji i danyc
 
 Strona przedstawia obie marki równolegle. Dotychczasowe filmy są oznaczone
 jako portfolio MissEye, nie PitSTOP. Portfolio PitSTOP / Nails art zawiera
-cztery dostarczone zdjęcia (dwie stylizacje w różnych ujęciach). Kopie WebP
+siedem dostarczonych zdjęć. Kolejność: róż/czerń, brąz z panterką
+(pełne dłonie, potem detal), wcześniejszy brąz (pełne dłonie, potem detal),
+nude (pełne dłonie, potem detal). Kopie WebP
 w `www/media/pitstop-nails-*.webp` mają szerokość 768 px i razem około
-197 KiB. Oryginały nie zostały zmienione. Zdjęcia ładują się leniwie,
+302 KiB (budżet 384 KiB). Oryginały nie zostały zmienione. Zdjęcia ładują się leniwie,
 mają opisy alternatywne i otwierają pełne ujęcie w nowej karcie.
 Wgraj je na hosting razem z pozostałymi mediami. Nie przedstawiają podologii.
+Profil MissEye zachowuje dostarczony portret SMP/PM
+(`www/media/misseye-specialist.webp`, 150 × 150 px, około 18 KiB,
+bezstratny WebP). W profilu PitSTOP ostatni załącznik zastępuje wcześniejsze
+zdjęcie: `www/media/do-nails-pro-ai.webp` (640 × 1120 px, około 33 KiB).
+Za zgodą właściciela ma jawny podpis **„Materiał wizerunkowy AI”**;
+zachowuje pełny kadr wraz z oznaczeniem na dole oryginału. Nie jest
+dokumentacją rzeczywistego gabinetu ani realizacji zabiegu, dlatego nie
+trafia do galerii prac. Oba obrazy mają opisy alternatywne i ładują się
+leniwie; żaden nie jest wyświetlany powyżej natywnej szerokości.
+Profile pokazują identyczne godziny i obszar. Wskazane godziny to ramy
+przyjęć; istniejące wizyty, przerwy i ustawienia dostępności nadal blokują
+terminy. Nie przypisujemy miast do konkretnych dni bez decyzji managera.
 Sekcja „Dla specjalistów” opisuje
 **planowany** rozwój ogólnopolski: edukację, pozyskiwanie zapytań, marketing,
 szkolenia i sprzedaż. Nie udaje działającego katalogu, sklepu ani zapisów

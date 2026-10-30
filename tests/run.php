@@ -34,6 +34,10 @@ function offerAndReminderTests(DateTimeImmutable $now, string $temporary): void
         $store = store('prices');
         $catalog = $store->catalog();
         check(count($catalog['services']) === 16 && $catalog['services'][0]['priceLabel'] === 'Cena do ustalenia');
+        foreach ($catalog['services'] as $service) {
+            check($service['firstConsultationFree'] === in_array($service['id'], ['smp', 'brwi', 'nails', 'podologia'], true));
+            check($service['price'] === ['amount' => null, 'mode' => 'fixed']);
+        }
         $offer = $catalog['offer'];
         $offer['prices']['smp'] = ['amount' => 12345, 'mode' => 'from'];
         $offer['prices']['nails'] = ['amount' => 0, 'mode' => 'fixed'];
@@ -293,11 +297,10 @@ try {
             check($service['reservedMinutes'] === $reserved);
             check($service['specialistId'] === (in_array($service['id'], ['smp', 'brwi', 'smp-1', 'smp-2', 'smp-3', 'henna', 'pm-zabieg'], true) ? 'misseye-1' : 'pitstop-1'));
             if ($service['specialistId'] === 'pitstop-1') {
+                check(str_contains($service['specialist'], 'do_nails'));
                 check(str_contains($service['specialist'], '@do_nails.beauty'));
-                check($service['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
-            } else {
-                check($service['location'] === 'Września');
             }
+            check($service['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
             $calendar = store('hours-' . $service['id']);
             check(count($calendar->availability('2026-10-30', $service['id'], $now)) === intdiv(720 - $reserved, 30) + 1);
             check(count($calendar->availability('2026-10-31', $service['id'], $now)) === intdiv(600 - $reserved, 30) + 1);
@@ -418,6 +421,24 @@ try {
             check($report['conflicts'][0]['type'] === $kind && !$report['applied']);
             check($store->roundFutureBookings(true, $now, $backup) === $report);
             check(file_get_contents($path) === $before && !file_exists($backup));
+        }
+    });
+
+    run('both specialists share Monday-Friday and Saturday hours across every service', function () use ($now): void {
+        foreach (\Misseye\services() as $service) {
+            check($service['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
+            for ($offset = 0; $offset < 7; $offset++) {
+                $date = \Misseye\parseDate('2026-11-02')->modify('+' . $offset . ' days')->format('Y-m-d');
+                $slots = \Misseye\schedule($date, $service, $now);
+                if ($offset === 6) {
+                    check($slots === []);
+                    continue;
+                }
+                check($slots[0]['time'] === ($offset === 5 ? '10:00' : '08:00'));
+                check($slots[array_key_last($slots)]['end'] === \Misseye\instant($date, '20:00'));
+                $opening = $offset === 5 ? 600 : 480;
+                check(count($slots) === intdiv(1200 - $opening - $service['reservedMinutes'], 30) + 1);
+            }
         }
     });
 
@@ -603,7 +624,11 @@ try {
         check($public['location'] === 'Września lub Poznań — lokalizacja ustalana z managerem');
         check(str_contains(rawurldecode($public['whatsappUrl']), 'PitSTOP'));
         check(str_contains(rawurldecode($public['whatsappUrl']), $public['location']));
-        check(\Misseye\publicBooking($misseye)['location'] === 'Września');
+        check(\Misseye\publicBooking($misseye)['location'] === $public['location']);
+        $previousLocation = $misseye;
+        $previousLocation['location'] = 'Września';
+        check(\Misseye\publicBooking($previousLocation)['location'] === 'Września');
+        check(\Misseye\visitLocation(['offer' => \Misseye\defaultOffer()], 'smp', '2026-10-30')['label'] === $public['location']);
         check(!str_contains(rawurldecode($public['whatsappUrl']), 'MISSEYE'));
         $store->cancel($misseye['id']);
         check(in_array('10:00', $store->availability('2026-10-30', 'brwi', $now), true));
@@ -613,6 +638,35 @@ try {
         check($store->reserve(input(['service' => 'podologia', 'time' => '11:00']), false, $now)['created']);
         $reopened = new BookingStore($temporary . DIRECTORY_SEPARATOR . 'two-calendars.json');
         check(count($reopened->list('2026-10-30')) === 4);
+    });
+
+    run('legacy MissEye locations remain Wrzesnia across every output without rewriting records', function () use ($now, $temporary, $wa): void {
+        $source = store('legacy-location-source');
+        $old = $source->reserve(input(['whatsappConsent' => true]), true, $now)['booking'];
+        unset($old['location'], $old['location_key']);
+        $store = store('legacy-location-target');
+        $store->import([$old]);
+        $path = $temporary . DIRECTORY_SEPARATOR . 'legacy-location-target.json';
+        $before = file_get_contents($path);
+        $public = \Misseye\publicBooking($store->get($old['id']));
+        check($public['location'] === 'Września');
+        check(str_contains(urldecode($public['whatsappUrl']), 'Miejsce: Września.'));
+        check($store->list($old['date'])[0]['location'] === 'Września');
+        check($store->calendar($old['date'], $old['date'])['bookings'][0]['location'] === 'Września');
+        $mail = \Misseye\reminderMessage(
+            ['from' => 'salon@example.com', 'reply_to' => 'salon@example.com'],
+            array_replace($old, ['email' => 'client@example.com'])
+        );
+        check(str_contains($mail['body'], 'Miejsce: Września.'));
+        check(file_get_contents($path) === $before);
+        check($store->get($old['id']) === $old);
+        \Misseye\notify($store, $old['id'], $wa, static function ($config, $payload): array {
+            check(str_ends_with($payload['template']['components'][0]['parameters'][0]['text'], '(Września)'));
+            return ['status' => 200, 'body' => '{"messages":[{"id":"wamid.legacy-location.test"}]}'];
+        });
+        check(!array_key_exists('location', $store->get($old['id'])));
+        check(\Misseye\bookingLocation(['service' => 'nails']) === \Misseye\SERVICE_AREA);
+        check(\Misseye\bookingLocation(['service' => 'smp', 'location' => 'Poznań']) === 'Poznań');
     });
 
     run('legacy JSON needs no rewrite and inconsistent specialist assignments fail explicitly', function () use ($now, $temporary): void {
@@ -821,7 +875,7 @@ try {
         $document->loadHTML($html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         $xpath = new DOMXPath($document);
         $links = $xpath->query('//a[@data-service]');
-        check($links->length === 5);
+        check($links->length === 7);
         $ids = [];
         foreach ($links as $link) {
             $ids[] = $link->getAttribute('data-service');
@@ -868,7 +922,7 @@ try {
         $document->loadHTML($html, LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         $xpath = new DOMXPath($document);
         $phones = $xpath->query('//a[starts-with(@href, "tel:")]');
-        check($phones->length === 2);
+        check($phones->length === 4);
         foreach ($phones as $phone) {
             check($phone->getAttribute('href') === 'tel:+48665638033');
             check(str_contains($phone->textContent, '665 638 033'));
@@ -883,12 +937,60 @@ try {
         check(!str_contains($html, '696 293 848') && !str_contains($html, '48696293848'));
     });
 
-    run('PitSTOP photo portfolio has four optimized images with accessible full-view links', function () use ($root): void {
+    run('first consultation promotion is visible for both specialists with an expanded price list', function () use ($root): void {
+        $document = new DOMDocument();
+        $document->loadHTML(file_get_contents($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'index.html'), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new DOMXPath($document);
+        foreach (['pitstop' => 'nails', 'misseye' => 'smp'] as $person => $service) {
+            $links = $xpath->query('//*[@id="' . $person . '"]//a[@class="consultation-offer"]');
+            check($links->length === 1);
+            check($links[0]->getAttribute('href') === '#rezerwacja' && $links[0]->getAttribute('data-service') === $service);
+            check(str_contains($links[0]->textContent, 'Pierwsza konsultacja GRATIS'));
+            check(str_contains($links[0]->textContent, 'Uprawnienie potwierdza manager'));
+        }
+        check($xpath->query('//section[@id="cennik"]//*[@id="offer-catalog"]')->length === 1);
+        check($xpath->query('//*[@id="offer-catalog"]/ancestor::details')->length === 0);
+        check(str_contains($xpath->query('//*[@id="cennik"]')[0]->textContent, 'ceny konsultacji poniżej dotyczą kolejnych wizyt'));
+    });
+
+    run('profiles share hours area and manager while AI material stays explicitly labelled', function () use ($root): void {
+        $document = new DOMDocument();
+        $document->loadHTML(file_get_contents($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'index.html'), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
+        $xpath = new DOMXPath($document);
+        foreach ([
+            ['pitstop', 'do-nails-pro-ai.webp', 640, 1120, 'Materiał wizerunkowy AI'],
+            ['misseye', 'misseye-specialist.webp', 150, 150, 'SMP i makijaż permanentny'],
+        ] as [$id, $filename, $width, $height, $description]) {
+            $portraits = $xpath->query('//*[@id="' . $id . '"]//img[@class="specialist-portrait"]');
+            check($portraits->length === 1);
+            $portrait = $portraits[0];
+            check($portrait->getAttribute('src') === 'media/' . $filename);
+            check($portrait->getAttribute('loading') === 'lazy' && $portrait->getAttribute('decoding') === 'async');
+            check(str_contains($portrait->getAttribute('alt'), $description));
+            $file = $root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . $filename;
+            $size = getimagesize($file);
+            check($size['mime'] === 'image/webp' && $size[0] === $width && $size[1] === $height);
+            check($size[0] === (int) $portrait->getAttribute('width') && $size[1] === (int) $portrait->getAttribute('height'));
+            check(filesize($file) < 100 * 1024);
+            $caption = $xpath->query('//*[@id="' . $id . '"]//p[@class="specialist-caption"]')[0];
+            check(str_contains($caption->textContent, 'Września i Poznań'));
+            check(str_contains($caption->textContent, 'niezależny kalendarz'));
+            $hours = $xpath->query('//*[@id="' . $id . '"]//p[@class="specialist-hours"]')[0];
+            check(str_contains($hours->textContent, 'Poniedziałek–piątek: 8:00–20:00'));
+            check(str_contains($hours->textContent, 'Sobota: 10:00–20:00'));
+            $contact = $xpath->query('//*[@id="' . $id . '"]//a[@class="specialist-manager"]');
+            check($contact->length === 1 && $contact[0]->getAttribute('href') === 'tel:+48665638033');
+        }
+        check($xpath->query('//*[@id="pitstop"]//figure[@class="specialist-photo"]/figcaption')[0]->textContent === 'Materiał wizerunkowy AI');
+        check($xpath->query('//*[@id="portfolio-pitstop"]//img[contains(@src, "-ai")]')->length === 0);
+    });
+
+    run('PitSTOP portfolio orders seven optimized photos with full views before matching details', function () use ($root): void {
         $document = new DOMDocument();
         $document->loadHTML(file_get_contents($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'index.html'), LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING);
         $xpath = new DOMXPath($document);
         $images = $xpath->query('//*[@id="portfolio-pitstop"]//img');
-        check($images->length === 4);
+        check($images->length === 7);
         $bytes = 0;
         $sources = [];
         foreach ($images as $image) {
@@ -907,8 +1009,11 @@ try {
             $sources[] = $src;
             $bytes += filesize($file);
         }
-        check(count(array_unique($sources)) === 4);
-        check($bytes < 300 * 1024, 'Nails portfolio exceeds its 300 KiB budget');
+        check($sources === array_map(static fn ($name) => 'media/pitstop-nails-' . $name . '.webp', [
+            'roz-czern', 'pantera', 'pantera-detal', 'braz', 'braz-detal', 'nude', 'nude-detal',
+        ]));
+        check(count(array_unique($sources)) === 7);
+        check($bytes < 384 * 1024, 'Nails portfolio exceeds its 384 KiB budget');
     });
 
     run('five video cards have posters, controls and no automatic playback', function () use ($root): void {
@@ -1081,8 +1186,8 @@ try {
             check($code === 200 && $empty === '');
             check(in_array('Content-Length: ' . filesize($root . DIRECTORY_SEPARATOR . 'www' . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . 'perfect-love.mp4'), $headers, true));
             check(request($base, '/media/missing.mp4')[0] === 404);
-            foreach (['braz-detal', 'braz', 'nude', 'nude-detal'] as $name) {
-                [$code, $photo, $headers] = request($base, '/media/pitstop-nails-' . $name . '.webp');
+            foreach (['pitstop-nails-roz-czern', 'pitstop-nails-pantera', 'pitstop-nails-pantera-detal', 'pitstop-nails-braz-detal', 'pitstop-nails-braz', 'pitstop-nails-nude', 'pitstop-nails-nude-detal', 'do-nails-pro-ai', 'misseye-specialist'] as $name) {
+                [$code, $photo, $headers] = request($base, '/media/' . $name . '.webp');
                 check($code === 200 && substr($photo, 0, 4) === 'RIFF' && substr($photo, 8, 4) === 'WEBP');
                 check(in_array('Content-Type: image/webp', $headers, true));
             }

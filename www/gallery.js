@@ -1,6 +1,6 @@
 const galleryVideos = [...document.querySelectorAll('.video-gallery video')];
 
-for (const image of document.querySelectorAll('.photo-gallery img')) {
+for (const image of document.querySelectorAll('.photo-gallery img, .specialist-photo img')) {
   const error = image.closest('figure').querySelector('.photo-error');
   const showError = () => {
     if (!error.hidden) return;

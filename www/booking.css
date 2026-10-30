@@ -20,6 +20,23 @@ section[id]{scroll-margin-top:90px}
 .offer-columns h3{font-size:1.5rem;color:#e8b893}
 .offer-columns>section:first-child h3{color:#b9d8cd}
 .public-offer ul{padding-left:22px;font-size:.85rem}
+.public-offer>h3{font-size:1.8rem}
+.offer-promotion{color:var(--accent-2)}
+.offer-schedule{border-top:1px solid var(--line);padding-top:16px}
+.offer-list{margin:12px 0 0}
+.offer-list>div{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;padding:14px 0;border-bottom:1px solid var(--line);font-size:.9rem}
+.offer-list dt,.offer-list dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.offer-list dd{text-align:right}
+.offer-list strong{font-weight:500}
+.offer-list small{display:block;color:var(--ink-dim);font-size:.75rem;margin-top:4px}
+.offer-consultation strong{color:var(--accent-2)}
+.offer-columns>section:first-child .offer-consultation strong{color:#b9d8cd}
+.consultation-offer{display:block;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:20px 0;background:rgba(232,184,147,.06);color:var(--accent-2)}
+.pitstop-group .consultation-offer{color:#b9d8cd;background:rgba(159,203,189,.06)}
+.consultation-offer strong,.consultation-offer small{display:block}
+.consultation-offer strong{font-size:1.05rem;font-weight:500}
+.consultation-offer small{font-size:.72rem;color:var(--ink-dim);margin-top:5px}
+.consultation-offer:focus-visible{outline:2px solid currentColor;outline-offset:4px}
 #offer-fields{display:block}
 .offer-price-row{display:grid;grid-template-columns:minmax(0,2fr) minmax(85px,1fr) minmax(85px,1fr);align-items:center;gap:12px;margin:10px 0}
 .offer-price-row label{min-width:0}
@@ -86,7 +103,27 @@ body .hero{padding:76px 0 64px}
 .brand-heading p{color:var(--ink-dim);font-size:.7rem}
 .brand-tag{font-size:.55rem;letter-spacing:.1em;border:1px solid var(--line);border-radius:999px;padding:5px 8px;margin-left:auto}
 .specialist-caption{font-size:.72rem;color:var(--ink-dim);margin:20px 0}
-.specialist-caption a{text-decoration:underline;text-underline-offset:3px}
+.specialist-hours{font-size:.75rem;line-height:1.8;margin:-8px 0 20px}
+.specialist-profile{display:flex;align-items:center;gap:20px;min-height:300px;margin:24px 0}
+.specialist-portrait{display:block;width:140px;height:auto;flex-shrink:0;object-fit:contain;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+.specialist-photo{flex-shrink:0;width:140px;margin:0}
+.specialist-photo>a{display:block}
+.specialist-photo .specialist-portrait{width:100%}
+.specialist-photo figcaption{font-size:.65rem;line-height:1.4;margin-top:8px;color:var(--ink-dim)}
+.pitstop-group .specialist-portrait{border-color:rgba(159,203,189,.35)}
+.specialist-intro{min-width:0}
+.specialist-role{font-size:.6rem;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim)}
+.specialist-intro h4{font:500 2rem/1.2 'Cormorant Garamond',serif;margin:8px 0;color:var(--accent-2)}
+.specialist-intro a,.specialist-intro p{font-size:.78rem;overflow-wrap:anywhere}
+.specialist-intro a{text-decoration:underline;text-underline-offset:4px}
+.specialist-intro p{margin-top:10px;color:var(--ink-dim)}
+.pitstop-group .specialist-intro h4,.pitstop-group .specialist-intro a{color:#b9d8cd}
+.specialist-manager{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 24px;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.specialist-manager span{font-size:.7rem;color:var(--ink-dim)}
+.specialist-manager strong{font-size:.95rem;font-weight:500;letter-spacing:.04em;color:var(--accent-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.specialist-manager:hover strong{text-decoration:underline;text-underline-offset:4px}
+@media(max-width:480px){.specialist-profile{gap:14px;min-height:250px}.specialist-photo,.specialist-portrait{width:110px}.specialist-intro h4{font-size:1.75rem}}
+@media(max-width:360px){.specialist-profile{align-items:flex-start;flex-direction:column}.specialist-photo,.specialist-portrait{width:140px}}
 .ig-cards.specialist-socials{grid-template-columns:repeat(3,minmax(0,1fr))}
 .specialist-socials .ig-card{min-width:0}
 .specialist-socials .pitstop-social{border-color:rgba(159,203,189,.3)}

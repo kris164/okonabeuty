@@ -13,6 +13,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'email.php';
 
 const ZONE = 'Europe/Warsaw';
 const WHATSAPP_NUMBER = '48665638033';
+const SERVICE_AREA = 'Września lub Poznań — lokalizacja ustalana z managerem';
 const NOTIFICATIONS = ['pending', 'sending', 'accepted', 'failed', 'unknown', 'not_requested', 'unconfigured'];
 
 final class HttpError extends RuntimeException
@@ -27,10 +28,10 @@ function specialists(): array
 {
     return [
         [
-            'id' => 'pitstop-1', 'name' => 'Specjalistka PitSTOP (@do_nails.beauty)', 'brand' => 'PitSTOP',
-            'location' => 'Września lub Poznań — lokalizacja ustalana z managerem',
+            'id' => 'pitstop-1', 'name' => 'Specjalistka do_nails (@do_nails.beauty)', 'brand' => 'PitSTOP',
+            'location' => SERVICE_AREA,
         ],
-        ['id' => 'misseye-1', 'name' => 'Specjalistka MissEye', 'brand' => 'MissEye', 'location' => 'Września'],
+        ['id' => 'misseye-1', 'name' => 'Specjalistka MissEye', 'brand' => 'MissEye', 'location' => SERVICE_AREA],
     ];
 }
 
@@ -60,6 +61,7 @@ function services(): array
         return [
             ...$service, 'brand' => $person['brand'], 'specialist' => $person['name'],
             'location' => $person['location'], 'reservedMinutes' => roundedMinutes($service['minutes']),
+            'firstConsultationFree' => in_array($service['id'], ['smp', 'brwi', 'nails', 'podologia'], true),
         ];
     }, $catalog);
 }
@@ -199,6 +201,12 @@ function bookingSpecialist(array $booking): string
         throw new RuntimeException('Booking specialist does not match the service.');
     }
     return $id;
+}
+
+function bookingLocation(array $booking): string
+{
+    // Before location snapshots, MissEye appointments were offered only in Września.
+    return $booking['location'] ?? (bookingSpecialist($booking) === 'misseye-1' ? 'Września' : SERVICE_AREA);
 }
 
 function bookingMinutes(array $booking): int
@@ -615,6 +623,7 @@ final class BookingStore
             return [
                 'bookings' => array_values(array_map(static fn ($b) => [
                     ...$b, 'minutes' => bookingMinutes($b), 'revision' => $b['revision'] ?? 0,
+                    'location' => bookingLocation($b),
                     'reserved_minutes' => bookingReservedMinutes($b),
                     'end_time' => (new DateTimeImmutable('@' . intdiv($b['ends'], 1000)))
                         ->setTimezone(new DateTimeZone(ZONE))->format('H:i'),
@@ -755,7 +764,7 @@ final class BookingStore
         return $this->file->read(static function ($data) use ($date): array {
             $bookings = array_values(array_filter($data['bookings'], static fn ($b) => $b['date'] === $date));
             usort($bookings, static fn ($a, $b) => [$a['time'], $a['created_at']] <=> [$b['time'], $b['created_at']]);
-            return $bookings;
+            return array_map(static fn ($booking) => [...$booking, 'location' => bookingLocation($booking)], $bookings);
         });
     }
 
@@ -911,7 +920,7 @@ final class BookingStore
 function publicBooking(array $booking): array
 {
     $service = serviceFor($booking['service']);
-    $location = $booking['location'] ?? $service['location'];
+    $location = bookingLocation($booking);
     $text = "Dzień dobry, mam rezerwację {$service['brand']}: {$service['name']}, {$booking['date']}, godz. {$booking['time']} (czas polski). Miejsce: {$location}. Numer rezerwacji: {$booking['id']}.";
     return [
         'id' => $booking['id'], 'date' => $booking['date'], 'time' => $booking['time'],
@@ -996,7 +1005,7 @@ function notify(BookingStore $store, string $id, ?array $config, ?callable $send
             'components' => [[
                 'type' => 'body', 'parameters' => array_map(
                     static fn ($text) => ['type' => 'text', 'text' => $text],
-                    [$service['brand'] . ' — ' . $service['name'] . ' (' . ($booking['location'] ?? $service['location']) . ')',
+                    [$service['brand'] . ' — ' . $service['name'] . ' (' . bookingLocation($booking) . ')',
                         $booking['date'], $booking['time'], $booking['id']]
                 ),
             ]],

@@ -102,7 +102,7 @@ function prepareOffer(data) {
     const row = document.createElement('div');
     row.className = 'offer-price-row';
     const title = document.createElement('span');
-    title.textContent = `${service.brand} · ${service.name}`;
+    title.textContent = `${service.brand} · ${service.name}${service.firstConsultationFree ? ' — kolejne konsultacje' : ''}`;
     const amountLabel = document.createElement('label');
     amountLabel.textContent = 'Kwota PLN (puste = do ustalenia)';
     const amount = document.createElement('input');

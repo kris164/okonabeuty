@@ -31,7 +31,7 @@ function emailConfig(mixed $settings): ?array
 function reminderMessage(array $config, array $booking): array
 {
     $service = serviceFor($booking['service']);
-    $location = $booking['location'] ?? $service['location'];
+    $location = bookingLocation($booking);
     $subject = '=?UTF-8?B?' . base64_encode('Przypomnienie o wizycie — ' . $service['brand']) . '?=';
     $body = "Przypominamy o wizycie {$service['brand']}.\n"
         . "Termin: {$booking['date']}, {$booking['time']} (Europe/Warsaw).\n"

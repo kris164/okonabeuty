@@ -14,6 +14,51 @@ let frozenRequest = null;
 let config;
 let activeBookingId = '';
 let requestedService = '';
+let findingNearest = false;
+const daysStrip = document.querySelector('#booking-days');
+const emailConsent = document.querySelector('#booking-email-consent');
+const email = document.querySelector('#booking-email');
+
+function syncEmailField() {
+  const enabled = Boolean(config?.emailReminders && emailConsent.checked);
+  email.disabled = !enabled;
+  email.required = enabled;
+  document.querySelector('#booking-email-field').hidden = !enabled;
+  if (!enabled) email.value = '';
+}
+emailConsent.addEventListener('change', syncEmailField);
+
+function showOffer() {
+  const container = document.querySelector('#offer-catalog');
+  container.replaceChildren();
+  for (const person of config.specialists) {
+    const section = document.createElement('section');
+    const title = document.createElement('h3');
+    title.textContent = person.brand;
+    section.append(title);
+    for (const item of config.services.filter(item => item.specialistId === person.id)) {
+      const line = document.createElement('p');
+      line.textContent = `${item.name}: ${item.priceLabel} · usługa ${item.minutes} min / kalendarz ${item.reservedMinutes} min`;
+      section.append(line);
+    }
+    container.append(section);
+  }
+  const week = document.querySelector('#offer-week');
+  week.replaceChildren();
+  const labels = { manager: 'miejsce ustala manager', wrzesnia: 'Września', poznan: 'Poznań', closed: 'brak przyjęć' };
+  config.offer.week.forEach((location, index) => {
+    const item = document.createElement('li');
+    const address = config.offer.addresses[location];
+    item.textContent = `${['Poniedziałek', 'Wtorek', 'Środa', 'Czwartek', 'Piątek', 'Sobota', 'Niedziela'][index]}: ${labels[location]}${address ? ` — ${address}` : ''}${index === 6 ? ' (bez zapisów online)' : ''}`;
+    week.append(item);
+  });
+}
+
+function offsetDate(value, days) {
+  const day = new Date(`${value}T12:00:00Z`);
+  day.setUTCDate(day.getUTCDate() + days);
+  return day.toISOString().slice(0, 10);
+}
 
 function message(text, error = false) {
   status.textContent = text;
@@ -52,7 +97,7 @@ async function loadSlots() {
     return;
   }
   document.querySelector('#booking-provider').textContent =
-    `${details.specialist} · ${details.minutes} min. ${details.location}. Termin blokuje tylko kalendarz tej osoby.`;
+    `${details.specialist} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min. ${details.location}. Termin blokuje tylko kalendarz tej osoby.`;
   const sequence = ++loadSequence;
   selectedTime = '';
   slots.replaceChildren();
@@ -60,8 +105,32 @@ async function loadSlots() {
   updateSubmit();
   message('Sprawdzam dostępne godziny…');
   try {
-    const { slots: times } = await api(`/api/availability?date=${encodeURIComponent(date.value)}&service=${encodeURIComponent(service.value)}`);
+    const query = `date=${encodeURIComponent(date.value)}&service=${encodeURIComponent(service.value)}`;
+    const [availability, { days }] = await Promise.all([
+      api(`/api/availability?${query}`), api(`/api/availability-days?${query}`),
+    ]);
     if (sequence !== loadSequence) return;
+    const times = availability.slots;
+    config.offer.revision = availability.offerRevision;
+    document.querySelector('#booking-price').textContent = availability.priceLabel;
+    document.querySelector('#booking-provider').textContent =
+      `${details.specialist} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min. Miejsce w wybranym dniu: ${availability.location}.`;
+    daysStrip.replaceChildren();
+    for (const day of days) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'date-choice';
+      button.setAttribute('aria-pressed', String(day.date === date.value));
+      const label = new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
+        .format(new Date(`${day.date}T12:00:00Z`));
+      button.textContent = `${label} · ${day.count ? `${day.count} terminów` : 'brak'}`;
+      button.disabled = day.count === 0;
+      button.addEventListener('click', () => { date.value = day.date; loadSlots(); });
+      daysStrip.append(button);
+    }
+    document.querySelector('#booking-prev-days').disabled = date.value <= config.today;
+    document.querySelector('#booking-next-days').disabled = offsetDate(date.value, 7) > config.maxDate;
+    document.querySelector('#booking-duration').textContent = `Czas usługi: ${details.minutes} min. W kalendarzu: ${details.reservedMinutes} min (zaokrąglenie czasu w górę do pełnej godziny). Starty co 30 minut.`;
     for (const time of times) {
       const button = document.createElement('button');
       button.type = 'button';
@@ -71,7 +140,7 @@ async function loadSlots() {
       button.addEventListener('click', () => {
         selectedTime = time;
         slots.querySelectorAll('button').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
-        message(`Wybrano ${date.value}, godz. ${time}.`);
+        message(`Wybrano ${date.value}, godz. ${time}. ${details.name} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min.`);
         updateSubmit();
       });
       slots.append(button);
@@ -109,7 +178,8 @@ async function watchNotification(id) {
       if (result.hidden || activeBookingId !== id) return;
       document.querySelector('#booking-notification').textContent = booking.status === 'cancelled'
         ? 'Ta rezerwacja została anulowana. Skontaktuj się z salonem.'
-        : notificationMessages[booking.notification];
+        : booking.rescheduled ? 'Manager zmienił termin. Aktualny termin potwierdź z managerem; pierwotna wiadomość WhatsApp może być nieaktualna.'
+          : notificationMessages[booking.notification];
       if (!['pending', 'sending'].includes(booking.notification) || booking.status === 'cancelled') return;
     } catch (error) {
       if (activeBookingId !== id) return;
@@ -133,6 +203,8 @@ form.addEventListener('submit', async event => {
       phone: document.querySelector('#booking-phone').value,
       consent: document.querySelector('#booking-consent').checked,
       whatsappConsent: document.querySelector('#booking-wa-consent').checked,
+      emailConsent: emailConsent.checked, email: emailConsent.checked ? email.value.trim() : '',
+      offerRevision: config.offer.revision,
     };
   }
   submitting = true;
@@ -145,9 +217,12 @@ form.addEventListener('submit', async event => {
       body: JSON.stringify(frozenRequest),
     });
     document.querySelector('#booking-summary').textContent =
-      `${booking.brand} · ${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski), ${booking.minutes} minut. ${booking.specialist}. Miejsce: ${booking.location}.`;
+      `${booking.brand} · ${booking.service} — ${booking.date}, godz. ${booking.time} (czas polski). Usługa: ${booking.minutes} min, czas zajęty w kalendarzu: ${booking.reservedMinutes} min. ${booking.specialist}. Miejsce: ${booking.location}. ${booking.priceLabel}.`;
     document.querySelector('#booking-reference').textContent = `Numer rezerwacji: ${booking.id}`;
     document.querySelector('#booking-notification').textContent = notificationMessages[booking.notification];
+    document.querySelector('#booking-email-notification').textContent = booking.emailReminder === 'pending'
+      ? 'Przypomnienie e-mail zaplanowane w ciągu 24 godzin przed wizytą. Sprawdź również folder spam.'
+      : 'Nie zamówiono przypomnienia e-mail.';
     document.querySelector('#booking-whatsapp').href = booking.whatsappUrl;
     form.hidden = true;
     result.hidden = false;
@@ -155,6 +230,7 @@ form.addEventListener('submit', async event => {
     result.focus();
     if (['pending', 'sending'].includes(booking.notification)) watchNotification(booking.id);
     form.reset();
+    syncEmailField();
     frozenRequest = null;
   } catch (error) {
     if (error.status && error.status < 500 && error.status !== 429) {
@@ -181,15 +257,52 @@ document.querySelector('#booking-new').addEventListener('click', () => {
   result.hidden = true;
   form.hidden = false;
   fields.disabled = false;
-  submit.textContent = 'Zarezerwuj konsultację';
+  submit.textContent = 'Zarezerwuj wizytę';
   date.value = config.today;
   loadSlots();
 });
 service.addEventListener('change', loadSlots);
 date.addEventListener('change', loadSlots);
+for (const [id, delta] of [['booking-prev-days', -7], ['booking-next-days', 7]]) {
+  document.getElementById(id).addEventListener('click', () => {
+    date.value = [config.today, offsetDate(date.value, delta)].sort().at(-1);
+    loadSlots();
+  });
+}
+document.querySelector('#booking-nearest').addEventListener('click', async () => {
+  findingNearest = true;
+  const sequence = ++loadSequence;
+  selectedTime = '';
+  slots.replaceChildren();
+  loading = true;
+  fields.disabled = true;
+  updateSubmit();
+  message('Szukam pierwszego terminu od wybranego dnia, maksymalnie 90 dni naprzód…');
+  try {
+    const { slot } = await api(`/api/next-availability?date=${encodeURIComponent(date.value)}&service=${encodeURIComponent(service.value)}`);
+    if (sequence !== loadSequence) return;
+    if (!slot) {
+      message('Brak wolnych terminów w dostępnym horyzoncie. Skontaktuj się z managerem.');
+    } else {
+      date.value = slot.date;
+      await loadSlots();
+      fields.disabled = false;
+      const button = [...slots.querySelectorAll('button')].find(item => item.textContent === slot.time);
+      if (button) button.click();
+      else message('Termin właśnie się zmienił. Wybierz godzinę z aktualnej listy.');
+    }
+  } catch (error) {
+    message(`${error.message} Spróbuj ponownie lub wybierz datę ręcznie.`, true);
+  } finally {
+    findingNearest = false;
+    loading = false;
+    fields.disabled = false;
+    updateSubmit();
+  }
+});
 for (const link of document.querySelectorAll('[data-service]')) {
   link.addEventListener('click', () => {
-    if (submitting || frozenRequest || !result.hidden) return;
+    if (submitting || findingNearest || frozenRequest || !result.hidden) return;
     requestedService = link.dataset.service;
     if (!config) return;
     service.value = requestedService;
@@ -204,13 +317,14 @@ async function init() {
   }
   try {
     config = await api('/api/config');
+    showOffer();
     for (const person of config.specialists) {
       const group = document.createElement('optgroup');
       group.label = person.brand;
       for (const item of config.services.filter(item => item.specialistId === person.id)) {
         const option = document.createElement('option');
         option.value = item.id;
-        option.textContent = `${item.name} (${item.minutes} min)`;
+        option.textContent = `${item.name} (${item.minutes} min; rezerwacja ${item.reservedMinutes} min)`;
         group.append(option);
       }
       service.append(group);
@@ -223,6 +337,11 @@ async function init() {
       ? 'Możesz otrzymać automatyczne potwierdzenie rezerwacji przez WhatsApp.'
       : 'Automatyczne potwierdzenia WhatsApp są jeszcze nieaktywne. Po zapisie możesz otworzyć rozmowę z salonem.';
     document.querySelector('#booking-wa-label').hidden = !config.automatedWhatsApp;
+    document.querySelector('#booking-email-label').hidden = !config.emailReminders;
+    document.querySelector('#booking-email-note').textContent = config.emailReminders
+      ? 'Przypomnienie e-mail jest dobrowolne; rezerwacja nie wymaga adresu e-mail.'
+      : 'Przypomnienia e-mail oczekują na konfigurację poczty. Nie zbieramy teraz adresów.';
+    syncEmailField();
     fields.disabled = false;
     await loadSlots();
   } catch (error) {

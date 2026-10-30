@@ -49,6 +49,7 @@ function loadConfig(?string $file = null): array
     $config['rate_file'] = dirname($config['data_file']) . DIRECTORY_SEPARATOR . 'rate-limits.json';
     assertPrivatePath($config['rate_file']);
     $config['whatsapp'] = whatsappConfig($config['whatsapp']);
+    $config['email'] = emailConfig($config['email'] ?? null);
     return $config;
 }
 
@@ -115,17 +116,25 @@ function handleApi(
     }
     $store = new BookingStore($config['data_file']);
     $store->recoverNotifications($config['whatsapp'] !== null);
+    $store->recoverEmailReminders(new DateTimeImmutable());
     if ($method === 'GET' && $path === '/api/config') {
         $now = new DateTimeImmutable();
         return [200, [
-            'services' => services(), 'specialists' => specialists(),
+            ...$store->catalog(),
             'today' => localDate($now), 'maxDate' => lastDate($now),
             'timezone' => ZONE, 'whatsappNumber' => WHATSAPP_NUMBER,
             'automatedWhatsApp' => $config['whatsapp'] !== null,
+            'emailReminders' => ($config['email'] ?? null) !== null,
         ]];
     }
     if ($method === 'GET' && $path === '/api/availability') {
-        return [200, ['slots' => $store->availability($query['date'] ?? null, $query['service'] ?? null)]];
+        return [200, $store->availabilityInfo($query['date'] ?? null, $query['service'] ?? null)];
+    }
+    if ($method === 'GET' && $path === '/api/next-availability') {
+        return [200, ['slot' => $store->nextAvailable($query['date'] ?? null, $query['service'] ?? null)]];
+    }
+    if ($method === 'GET' && $path === '/api/availability-days') {
+        return [200, ['days' => $store->availableDays($query['date'] ?? null, $query['service'] ?? null)]];
     }
     if ($method === 'GET' && preg_match('~\A/api/bookings/([a-f0-9-]{36})\z~', $path, $match)) {
         $booking = $store->get($match[1]);
@@ -134,7 +143,9 @@ function handleApi(
         }
         return [200, ['booking' => publicBooking($booking)]];
     }
-    if ($method === 'POST' && $path === '/api/bookings') {
+    $input = null;
+    if ($method === 'POST' && (in_array($path, ['/api/bookings', '/api/admin/bookings', '/api/admin/blocks', '/api/admin/offer'], true)
+        || str_ends_with($path, '/reschedule'))) {
         if (strtolower(trim(explode(';', $headers['content-type'] ?? '')[0])) !== 'application/json') {
             throw new HttpError(415, 'Wymagany format JSON.');
         }
@@ -146,15 +157,40 @@ function handleApi(
         } catch (\JsonException $error) {
             throw new HttpError(400, 'Nieprawidłowy JSON.');
         }
-        $saved = $store->reserve($input, $config['whatsapp'] !== null);
+    }
+    if ($method === 'POST' && in_array($path, ['/api/bookings', '/api/admin/bookings'], true)) {
+        $saved = $store->reserve($input, $config['whatsapp'] !== null, null, ($config['email'] ?? null) !== null);
         notify($store, $saved['booking']['id'], $config['whatsapp'], $sender);
         return [$saved['created'] ? 201 : 200, ['booking' => publicBooking($store->get($saved['booking']['id']))]];
     }
     if ($method === 'GET' && $path === '/api/admin/bookings') {
         return [200, [
             'bookings' => $store->list($query['date'] ?? null),
-            'services' => services(), 'specialists' => specialists(),
+            ...$store->catalog(),
         ]];
+    }
+    if ($method === 'GET' && $path === '/api/admin/calendar') {
+        return [200, [
+            ...$store->calendar($query['date'] ?? null, $query['end'] ?? null),
+            ...$store->catalog(), 'emailReminders' => ($config['email'] ?? null) !== null,
+            'today' => localDate(new DateTimeImmutable()), 'maxDate' => lastDate(new DateTimeImmutable()),
+        ]];
+    }
+    if ($method === 'POST' && $path === '/api/admin/offer') {
+        return [200, ['offer' => $store->saveOffer($input)]];
+    }
+    if ($method === 'POST' && preg_match('~\A/api/admin/bookings/([a-f0-9-]{36})/email-stop\z~', $path, $match)) {
+        $store->stopEmailReminder($match[1]);
+        return [200, ['stopped' => true]];
+    }
+    if ($method === 'POST' && preg_match('~\A/api/admin/bookings/([a-f0-9-]{36})/reschedule\z~', $path, $match)) {
+        return [200, ['booking' => $store->reschedule($match[1], $input)]];
+    }
+    if ($method === 'POST' && $path === '/api/admin/blocks') {
+        return [201, ['block' => $store->addBlock($input)]];
+    }
+    if ($method === 'POST' && preg_match('~\A/api/admin/blocks/([a-f0-9-]{36})/cancel\z~', $path, $match)) {
+        return [200, ['block' => $store->cancelBlock($match[1])]];
     }
     if ($method === 'POST' && preg_match('~\A/api/admin/bookings/([a-f0-9-]{36})/cancel\z~', $path, $match)) {
         return [200, ['booking' => $store->cancel($match[1])]];

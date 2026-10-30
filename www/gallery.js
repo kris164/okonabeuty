@@ -1,5 +1,17 @@
 const galleryVideos = [...document.querySelectorAll('.video-gallery video')];
 
+for (const image of document.querySelectorAll('.photo-gallery img')) {
+  const error = image.closest('figure').querySelector('.photo-error');
+  const showError = () => {
+    if (!error.hidden) return;
+    error.hidden = false;
+    console.error('Nie udało się wczytać zdjęcia:', image.src);
+  };
+  image.addEventListener('error', showError);
+  image.addEventListener('load', () => { error.hidden = true; });
+  if (image.complete && image.naturalWidth === 0) showError();
+}
+
 for (const video of galleryVideos) {
   const error = video.closest('figure').querySelector('.video-error');
   const source = video.querySelector('source');

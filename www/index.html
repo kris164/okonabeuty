@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MissEye × PitSTOP — SMP, PM, Nails art i podologia | Września i Poznań</title>
-<meta name="description" content="MissEye: SMP i makijaż permanentny we Wrześni. PitSTOP: stylizacja dłoni i podologia — Września lub Poznań, miejsce ustalane z managerem. Rezerwuj konsultację.">
+<meta name="description" content="MissEye: SMP i makijaż permanentny. PitSTOP: dłonie i stopy. Wybierz konsultację lub pełny zabieg, sprawdź czas i zarezerwuj termin. Września i Poznań.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
@@ -145,10 +145,6 @@
 
   /* kontakt */
   .contact{text-align:center}
-  .contact .phone{
-    font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,5vw,3.2rem);
-    color:var(--accent-2);display:inline-block;margin:18px 0 6px;
-  }
   .contact .loc{color:var(--ink-dim);font-weight:300;margin-bottom:34px}
   .contact-links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
 
@@ -158,9 +154,15 @@
 </head>
 <body>
 
+<svg class="brand-symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="mark-nail" viewBox="0 0 64 48"><path d="M20 40V18C20 1 44 1 44 18V40Q32 46 20 40Z M23 32Q32 27 41 32 M27 13Q30 8 35 10"/></symbol>
+    <symbol id="mark-eye" viewBox="0 0 64 48"><path d="M5 25Q32 1 59 25Q32 47 5 25Z M12 14L9 8 M32 8V2 M52 14L55 8"/><circle cx="32" cy="25" r="8"/></symbol>
+  </defs>
+</svg>
 <header>
   <div class="wrap nav">
-    <a class="logo" href="#" aria-label="MissEye i PitSTOP — strona główna"><span>MissEye</span><i>×</i><span>PitSTOP</span></a>
+    <a class="logo" href="#" aria-label="PitSTOP i MissEye — strona główna"><span>PitSTOP</span><i>×</i><span>MissEye</span></a>
     <ul>
       <li><a href="#uslugi">Usługi</a></li>
       <li><a href="#proces">Jak to działa</a></li>
@@ -181,18 +183,20 @@
         <a class="btn btn-primary" href="#uslugi">Poznaj nasze usługi</a>
         <a class="btn btn-ghost" href="#dla-specjalistow">Rozwijaj z nami beauty ↗</a>
       </div>
-      <div class="hero-facts"><span><strong>2</strong> specjalistów</span><span><strong>4</strong> specjalizacje</span><span><strong>30 min</strong> konsultacji</span></div>
+      <div class="hero-facts"><span><strong>2</strong> specjalistki</span><span><strong>4</strong> specjalizacje</span><span><strong>Pełne godziny</strong> rezerwacji w kalendarzu</span></div>
     </div>
     <div class="brand-preview" aria-label="Poznaj dwie marki">
-      <a class="brand-tile misseye-tile" href="#misseye">
-        <span class="tile-top">01 / PIGMENTACJA <span aria-hidden="true">↗</span></span>
-        <strong>MissEye<span class="brand-dot">.</span></strong>
-        <span class="tile-bottom">SMP &amp; makijaż permanentny<span>Precyzja. Subtelność. Ty.</span></span>
-      </a>
       <a class="brand-tile pitstop-tile" href="#pitstop">
-        <span class="tile-top">02 / DŁONIE &amp; STOPY <span aria-hidden="true">↗</span></span>
+        <span class="tile-top">01 / DŁONIE &amp; STOPY <span aria-hidden="true">↗</span></span>
+        <svg class="brand-mark" aria-hidden="true"><use href="#mark-nail"/></svg>
         <strong>PitSTOP<span class="brand-dot">.</span></strong>
         <span class="tile-bottom">Nails art &amp; podologia<span>@do_nails.beauty · Twój moment dla siebie.</span></span>
+      </a>
+      <a class="brand-tile misseye-tile" href="#misseye">
+        <span class="tile-top">02 / PIGMENTACJA <span aria-hidden="true">↗</span></span>
+        <svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg>
+        <strong>MissEye<span class="brand-dot">.</span></strong>
+        <span class="tile-bottom">SMP &amp; makijaż permanentny<span>Precyzja. Subtelność. Ty.</span></span>
       </a>
       <p class="preview-caption">Różne specjalizacje. Wspólna dbałość o Ciebie.</p>
     </div>
@@ -203,30 +207,12 @@
   <div class="wrap">
     <div class="section-heading">
       <div><p class="kicker">Wybierz swoją ścieżkę</p><h2 class="title">Dobra opieka ma specjalizację.</h2></div>
-      <p class="lead">Cztery obszary, dwie osoby. Zacznij od 30-minutowej konsultacji — zakres, termin i czas zabiegu ustalisz ze swoim specjalistą.</p>
+      <p class="lead">Cztery obszary, dwie osoby. Wybierz konsultację lub konkretny wariant zabiegu. Czas każdej usługi zobaczysz w kalendarzu; cenę i kwalifikację ustal ze specjalistą.</p>
     </div>
     <div class="brand-services">
-      <article class="brand-group" id="misseye">
-        <div class="brand-heading"><span class="brand-index">01</span><div><h3>MissEye</h3><p>Pigmentacja dopasowana do Ciebie</p></div><span class="brand-tag">SMP / PM</span></div>
-        <p class="specialist-caption">Specjalista MissEye · Września · niezależny kalendarz</p>
-        <div class="service-pair">
-          <div class="service-detail">
-            <span class="service-code">SMP</span>
-            <h4>Mikropigmentacja skóry głowy</h4>
-            <p>Porozmawiaj o optycznym zagęszczeniu włosów, efekcie krótko ogolonej głowy i możliwościach kamuflażu blizn.</p>
-            <a class="service-link" href="#rezerwacja" data-service="smp">Konsultacja SMP <span aria-hidden="true">↗</span></a>
-          </div>
-          <div class="service-detail">
-            <span class="service-code">PM</span>
-            <h4>Makijaż permanentny</h4>
-            <p>Dobór efektu, kształtu i pigmentu. Omówimy Twoje oczekiwania, możliwości zabiegu i indywidualny plan.</p>
-            <a class="service-link" href="#rezerwacja" data-service="brwi">Konsultacja PM <span aria-hidden="true">↗</span></a>
-          </div>
-        </div>
-      </article>
       <article class="brand-group pitstop-group" id="pitstop">
-        <div class="brand-heading"><span class="brand-index">02</span><div><h3>PitSTOP</h3><p>Mały przystanek. Dużo troski o siebie.</p></div><span class="brand-tag">DŁONIE / STOPY</span></div>
-        <p class="specialist-caption">Specjalista PitSTOP · <a href="https://instagram.com/do_nails.beauty" target="_blank" rel="noopener noreferrer">@do_nails.beauty ↗</a></p>
+        <div class="brand-heading"><svg class="brand-mark" aria-hidden="true"><use href="#mark-nail"/></svg><div><h3>PitSTOP</h3><p>Mały przystanek. Dużo troski o siebie.</p></div><span class="brand-tag">DŁONIE / STOPY</span></div>
+        <p class="specialist-caption">Specjalistka PitSTOP · <a href="https://instagram.com/do_nails.beauty" target="_blank" rel="noopener noreferrer">@do_nails.beauty ↗</a></p>
         <p class="specialist-caption">Września lub Poznań — lokalizacja ustalana z managerem. Jeden niezależny kalendarz dla obu miast.</p>
         <div class="service-pair">
           <div class="service-detail">
@@ -243,6 +229,24 @@
           </div>
         </div>
       </article>
+      <article class="brand-group misseye-group" id="misseye">
+        <div class="brand-heading"><svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg><div><h3>MissEye</h3><p>Pigmentacja dopasowana do Ciebie</p></div><span class="brand-tag">SMP / PM</span></div>
+        <p class="specialist-caption">Specjalistka MissEye · Września · niezależny kalendarz</p>
+        <div class="service-pair">
+          <div class="service-detail">
+            <span class="service-code">SMP</span>
+            <h4>Mikropigmentacja skóry głowy</h4>
+            <p>Porozmawiaj o optycznym zagęszczeniu włosów, efekcie krótko ogolonej głowy i możliwościach kamuflażu blizn.</p>
+            <a class="service-link" href="#rezerwacja" data-service="smp">Konsultacja SMP <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="service-detail">
+            <span class="service-code">PM</span>
+            <h4>Makijaż permanentny</h4>
+            <p>Dobór efektu, kształtu i pigmentu. Omówimy Twoje oczekiwania, możliwości zabiegu i indywidualny plan.</p>
+            <a class="service-link" href="#rezerwacja" data-service="brwi">Konsultacja PM <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </article>
     </div>
   </div>
 </section>
@@ -255,12 +259,12 @@
       <div class="step">
         <div class="n">Krok 01</div>
         <h3>Wybierz usługę</h3>
-        <p>MissEye czy PitSTOP? Wskaż obszar, który Cię interesuje. Przypiszemy konsultację do właściwego specjalisty.</p>
+        <p>MissEye czy PitSTOP? Wskaż obszar, który Cię interesuje. Przypiszemy wizytę do właściwego specjalisty.</p>
       </div>
       <div class="step">
         <div class="n">Krok 02</div>
-        <h3>Zarezerwuj 30 minut</h3>
-        <p>Wybierz wolny termin w kalendarzu danej osoby. Rezerwujesz konsultację, a nie pełny zabieg.</p>
+        <h3>Wybierz wariant i termin</h3>
+        <p>Konsultacja trwa 30 minut. Pełne zabiegi mają własne czasy — system rezerwuje cały wymagany przedział.</p>
       </div>
       <div class="step">
         <div class="n">Krok 03</div>
@@ -302,52 +306,97 @@
 
 <section id="efekty">
   <div class="wrap">
-    <p class="kicker">Portfolio MissEye</p>
-    <h2 class="title">Mniej opowiadania. Więcej podglądania.</h2>
-    <p class="lead">Zajrzyj do gabinetu MissEye. Poniższe filmy przedstawiają tę markę — materiały PitSTOP dodamy osobno.</p>
-    <div class="video-gallery">
-      <figure class="video-card">
-        <video controls playsinline preload="none" poster="media/misseye-gabinet.webp" width="720" height="1280" aria-labelledby="film-gabinet">
-          <source src="media/misseye-gabinet.mp4" type="video/mp4">
-          Twoja przeglądarka nie obsługuje wideo. <a href="media/misseye-gabinet.mp4">Otwórz film „Poznaj gabinet”.</a>
-        </video>
-        <figcaption><h3 id="film-gabinet">Poznaj gabinet</h3></figcaption>
-        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/misseye-gabinet.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
-      </figure>
-      <figure class="video-card">
-        <video controls playsinline preload="none" poster="media/przed-i-po.webp" width="720" height="1280" aria-labelledby="film-przed-po">
-          <source src="media/przed-i-po.mp4" type="video/mp4">
-          Twoja przeglądarka nie obsługuje wideo. <a href="media/przed-i-po.mp4">Otwórz film „Przed i po”.</a>
-        </video>
-        <figcaption><h3 id="film-przed-po">Przed i po</h3></figcaption>
-        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/przed-i-po.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
-      </figure>
-      <figure class="video-card">
-        <video controls playsinline preload="none" poster="media/perfect-love.webp" width="720" height="1280" aria-labelledby="film-perfect-love">
-          <source src="media/perfect-love.mp4" type="video/mp4">
-          Twoja przeglądarka nie obsługuje wideo. <a href="media/perfect-love.mp4">Otwórz film „Perfect Love”.</a>
-        </video>
-        <figcaption><h3 id="film-perfect-love">Perfect Love</h3></figcaption>
-        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/perfect-love.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
-      </figure>
-      <figure class="video-card">
-        <video controls playsinline preload="none" poster="media/dynamiczny.webp" width="720" height="1280" aria-labelledby="film-kulisy">
-          <source src="media/dynamiczny.mp4" type="video/mp4">
-          Twoja przeglądarka nie obsługuje wideo. <a href="media/dynamiczny.mp4">Otwórz film „MISSEYE — kulisy pracy”.</a>
-        </video>
-        <figcaption><h3 id="film-kulisy">MISSEYE — kulisy pracy</h3></figcaption>
-        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/dynamiczny.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
-      </figure>
-      <figure class="video-card">
-        <video controls playsinline preload="none" poster="media/wizyta-w-gabinecie.webp" width="720" height="1280" aria-labelledby="film-wizyta">
-          <source src="media/wizyta-w-gabinecie.mp4" type="video/mp4">
-          Twoja przeglądarka nie obsługuje wideo. <a href="media/wizyta-w-gabinecie.mp4">Otwórz film „Wizyta w gabinecie”.</a>
-        </video>
-        <figcaption><h3 id="film-wizyta">Wizyta w gabinecie</h3></figcaption>
-        <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/wizyta-w-gabinecie.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
-      </figure>
-    </div>
-    <p class="gallery-note">Filmy uruchamiasz samodzielnie. Dźwięk i pełny ekran są dostępne w odtwarzaczu.</p>
+    <p class="kicker">Dwie specjalistki / dwa portfolio</p>
+    <h2 class="title">Zobacz nas obok siebie.</h2>
+    <div class="portfolio-columns">
+    <article class="nails-portfolio" id="portfolio-pitstop" aria-labelledby="nails-title">
+      <svg class="brand-mark" aria-hidden="true"><use href="#mark-nail"/></svg>
+      <p class="kicker">Portfolio PitSTOP / Nails art</p>
+      <h2 class="title" id="nails-title">Małe detale. Twój własny styl.</h2>
+      <p class="lead">Czekoladowy połysk czy subtelny nude ze zdobieniem? Zobacz dwie stylizacje w czterech ujęciach — prace specjalistki PitSTOP z profilu @do_nails.beauty.</p>
+      <div class="photo-gallery">
+        <figure class="photo-card">
+          <a href="media/pitstop-nails-braz-detal.webp" target="_blank" rel="noopener" aria-label="Powiększ: czekoladowy połysk — detal (nowa karta)">
+            <img src="media/pitstop-nails-braz-detal.webp" width="768" height="1024" loading="lazy" decoding="async" alt="Zbliżenie kwadratowych paznokci w czekoladowym brązie z błyszczącym złocistym wzorem.">
+          </a>
+          <figcaption><h3>Czekoladowy połysk</h3><p>Metaliczne akcenty z bliska.</p></figcaption>
+          <p class="photo-error" role="alert" hidden>Nie udało się wczytać zdjęcia. <a href="media/pitstop-nails-braz-detal.webp" target="_blank" rel="noopener">Otwórz zdjęcie w nowej karcie.</a></p>
+        </figure>
+        <figure class="photo-card">
+          <a href="media/pitstop-nails-braz.webp" target="_blank" rel="noopener" aria-label="Powiększ: brąz i światło — obie dłonie (nowa karta)">
+            <img src="media/pitstop-nails-braz.webp" width="768" height="1024" loading="lazy" decoding="async" alt="Obie dłonie z kwadratowymi, brązowymi paznokciami i połyskującymi zdobieniami w ciepłym świetle.">
+          </a>
+          <figcaption><h3>Brąz i światło</h3><p>Ta sama stylizacja w pełnym ujęciu.</p></figcaption>
+          <p class="photo-error" role="alert" hidden>Nie udało się wczytać zdjęcia. <a href="media/pitstop-nails-braz.webp" target="_blank" rel="noopener">Otwórz zdjęcie w nowej karcie.</a></p>
+        </figure>
+        <figure class="photo-card">
+          <a href="media/pitstop-nails-nude.webp" target="_blank" rel="noopener" aria-label="Powiększ: nude z charakterem — obie dłonie (nowa karta)">
+            <img src="media/pitstop-nails-nude.webp" width="768" height="1365" loading="lazy" decoding="async" alt="Długie paznokcie w kształcie migdała, w odcieniu nude, z czarnymi i srebrzystymi ornamentami.">
+          </a>
+          <figcaption><h3>Nude z charakterem</h3><p>Delikatna baza, wyraziste zdobienie.</p></figcaption>
+          <p class="photo-error" role="alert" hidden>Nie udało się wczytać zdjęcia. <a href="media/pitstop-nails-nude.webp" target="_blank" rel="noopener">Otwórz zdjęcie w nowej karcie.</a></p>
+        </figure>
+        <figure class="photo-card">
+          <a href="media/pitstop-nails-nude-detal.webp" target="_blank" rel="noopener" aria-label="Powiększ: ornament w detalu (nowa karta)">
+            <img src="media/pitstop-nails-nude-detal.webp" width="768" height="1024" loading="lazy" decoding="async" alt="Zbliżenie jasnych paznokci nude z wypukłym, czarno-srebrzystym ornamentem.">
+          </a>
+          <figcaption><h3>Ornament w detalu</h3><p>Drugie spojrzenie na tę samą stylizację.</p></figcaption>
+          <p class="photo-error" role="alert" hidden>Nie udało się wczytać zdjęcia. <a href="media/pitstop-nails-nude-detal.webp" target="_blank" rel="noopener">Otwórz zdjęcie w nowej karcie.</a></p>
+        </figure>
+      </div>
+      <p class="gallery-note">Kliknij zdjęcie, aby zobaczyć pełne ujęcie w nowej karcie. Zdjęcia przedstawiają stylizacje dłoni, nie zabiegi podologiczne.</p>
+      <a class="service-link" href="#rezerwacja" data-service="nails">Dobierz swoją stylizację — umów konsultację dłoni ↗</a>
+      </article>
+      <article class="eye-portfolio" id="portfolio-misseye" aria-labelledby="eye-title">
+        <svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg>
+        <p class="kicker">Portfolio MissEye</p>
+        <h2 class="title" id="eye-title">Subtelność widoczna w detalach.</h2>
+        <p class="lead">Zajrzyj do gabinetu MissEye i poznaj kulisy pigmentacji. Poniższe filmy przedstawiają wyłącznie tę markę.</p>
+        <div class="video-gallery">
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/misseye-gabinet.webp" width="720" height="1280" aria-labelledby="film-gabinet">
+              <source src="media/misseye-gabinet.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/misseye-gabinet.mp4">Otwórz film „Poznaj gabinet”.</a>
+            </video>
+            <figcaption><h3 id="film-gabinet">Poznaj gabinet</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/misseye-gabinet.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/przed-i-po.webp" width="720" height="1280" aria-labelledby="film-przed-po">
+              <source src="media/przed-i-po.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/przed-i-po.mp4">Otwórz film „Przed i po”.</a>
+            </video>
+            <figcaption><h3 id="film-przed-po">Przed i po</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/przed-i-po.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/perfect-love.webp" width="720" height="1280" aria-labelledby="film-perfect-love">
+              <source src="media/perfect-love.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/perfect-love.mp4">Otwórz film „Perfect Love”.</a>
+            </video>
+            <figcaption><h3 id="film-perfect-love">Perfect Love</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/perfect-love.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/dynamiczny.webp" width="720" height="1280" aria-labelledby="film-kulisy">
+              <source src="media/dynamiczny.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/dynamiczny.mp4">Otwórz film „MISSEYE — kulisy pracy”.</a>
+            </video>
+            <figcaption><h3 id="film-kulisy">MISSEYE — kulisy pracy</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/dynamiczny.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/wizyta-w-gabinecie.webp" width="720" height="1280" aria-labelledby="film-wizyta">
+              <source src="media/wizyta-w-gabinecie.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/wizyta-w-gabinecie.mp4">Otwórz film „Wizyta w gabinecie”.</a>
+            </video>
+            <figcaption><h3 id="film-wizyta">Wizyta w gabinecie</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/wizyta-w-gabinecie.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+        </div>
+        <p class="gallery-note">Filmy uruchamiasz samodzielnie. Dźwięk i pełny ekran są dostępne w odtwarzaczu.</p>
+      </article>
+      </div>
     <p class="lead">Więcej prac znajdziesz na Instagramie: pigmentacja MissEye oraz stylizacje dłoni PitSTOP na profilu @do_nails.beauty.</p>
     <div class="ig-cards specialist-socials">
       <a class="ig-card" href="https://instagram.com/misseye.smp" target="_blank" rel="noopener">
@@ -362,7 +411,7 @@
       </a>
       <a class="ig-card pitstop-social" href="https://instagram.com/do_nails.beauty" target="_blank" rel="noopener noreferrer">
         <span class="handle">@do_nails.beauty</span>
-        <p>PitSTOP — stylizacje dłoni, hybrydy i przedłużanie. Zobacz prace drugiego specjalisty. Miejsce konsultacji we Wrześni lub Poznaniu ustalisz z managerem.</p>
+        <p>PitSTOP — stylizacje dłoni, hybrydy i przedłużanie. Zobacz prace drugiego specjalisty. Miejsce wizyty we Wrześni lub Poznaniu ustalisz z managerem.</p>
         <span class="go">Zobacz na Instagramie →</span>
       </a>
     </div>
@@ -372,9 +421,17 @@
 <section class="booking" id="rezerwacja">
   <div class="wrap">
     <p class="kicker">Rezerwacje online</p>
-    <h2 class="title">Twoja marka. Twój specjalista. Twój termin.</h2>
-    <p class="lead">Zarezerwuj 30-minutową konsultację. Termin i długość właściwego zabiegu ustalimy indywidualnie.</p>
+    <h2 class="title">Twoja marka. Twoja specjalistka. Twój termin.</h2>
+    <p class="lead">Konsultacja trwa 30 minut, ale rezerwujemy na nią pełną godzinę. Czas zabiegów zaokrąglamy w kalendarzu w górę do pełnych godzin, np. 90 → 120 minut. Kolejne etapy rezerwuje się osobno; cenę i kwalifikację potwierdza specjalistka.</p>
     <p class="booking-note">MissEye: Września. PitSTOP: Września lub Poznań — miejsce potwierdź z managerem przed wizytą. Rezerwacja online dotyczy terminu, nie wyboru adresu.</p>
+    <details class="public-offer">
+      <summary>Cennik usług i dni przyjęć PitSTOP</summary>
+      <p>Ceny bez kwoty wymagają ustalenia z managerem. „Od” oznacza cenę początkową, nie końcową wycenę. Zapis nie pobiera opłaty.</p>
+      <div id="offer-catalog" class="offer-columns"></div>
+      <h3>Dni przyjęć PitSTOP</h3>
+      <ul id="offer-week"></ul>
+      <p>Godziny pracy pozostają bez zmian. Niedziela nie ma zapisów online. Terminy i adresy ustalane z managerem wymagają potwierdzenia przed przyjazdem.</p>
+    </details>
     <div class="booking-layout">
       <div>
         <h3 class="title">Kiedy się spotkamy?</h3>
@@ -384,21 +441,33 @@
           <li>Niedziela: do uzgodnienia</li>
         </ul>
         <p class="booking-note">Godziny obu specjalistów według czasu polskiego. Rezerwacje do 90 dni naprzód. Usługi jednej osoby współdzielą kalendarz, ale MissEye i PitSTOP mogą przyjmować równolegle. Zapis nie blokuje Booksy.</p>
-        <a class="btn btn-primary" href="https://wa.me/48696293848" target="_blank" rel="noopener noreferrer">Napisz na WhatsApp</a>
-        <p class="booking-note">Wspólny kontakt do managera: +48 696 293 848</p>
+        <a class="btn btn-primary" href="https://wa.me/48665638033" target="_blank" rel="noopener noreferrer">Napisz na WhatsApp</a>
+        <a class="manager-quick-contact" href="tel:+48665638033" aria-label="Zadzwoń do managera: +48 665 638 033">
+          <span>Twój kontakt do managera</span>
+          <strong>665 638 033</strong>
+          <small>PitSTOP × MissEye · telefon +48</small>
+        </a>
         <p class="booking-note" id="booking-wa-note">Sprawdzam dostępność potwierdzeń WhatsApp…</p>
         <p class="booking-note">Zmiana lub odwołanie wizyty: napisz do salonu i podaj numer rezerwacji. Samo otwarcie rozmowy nie wysyła wiadomości.</p>
       </div>
       <div>
         <form class="booking-form" id="booking-form">
           <fieldset class="booking-fields" id="booking-fields" disabled>
-            <label>Marka i rodzaj konsultacji
+            <label>Marka i usługa
               <select id="booking-service" name="service" required></select>
             </label>
             <p class="booking-provider" id="booking-provider" aria-live="polite"></p>
+            <p id="booking-price" aria-live="polite"></p>
             <label>Data
               <input id="booking-date" name="date" type="date" required>
             </label>
+            <div class="date-navigation">
+              <button id="booking-prev-days" type="button" aria-label="Poprzednie siedem dni">← 7 dni</button>
+              <button id="booking-nearest" type="button">Najbliższy wolny termin</button>
+              <button id="booking-next-days" type="button" aria-label="Następne siedem dni">7 dni →</button>
+            </div>
+            <div id="booking-days" class="date-strip" role="group" aria-label="Dostępność w kolejnych dniach"></div>
+            <p id="booking-duration" class="booking-note"></p>
             <p id="booking-slot-label">Dostępne godziny</p>
             <div class="slots" id="booking-slots" role="group" aria-labelledby="booking-slot-label"></div>
             <label>Imię
@@ -415,10 +484,18 @@
               <input id="booking-wa-consent" type="checkbox">
               <span>Chcę otrzymać potwierdzenie tej rezerwacji przez WhatsApp na podany numer. Wiadomość zostanie obsłużona przez Meta. Zgoda jest dobrowolna.</span>
             </label>
+            <p id="booking-email-note"></p>
+            <label class="check" id="booking-email-label" hidden>
+              <input id="booking-email-consent" type="checkbox">
+              <span>Chcę otrzymać jedno organizacyjne przypomnienie e-mail w ciągu 24 godzin przed wizytą. Dobrowolnie zgadzam się na użycie adresu wyłącznie w tym celu; zgodę mogę wycofać przez kontakt z managerem.</span>
+            </label>
+            <label id="booking-email-field" hidden>E-mail do przypomnienia
+              <input id="booking-email" type="email" autocomplete="email" maxlength="254" disabled>
+            </label>
           </fieldset>
           <p class="booking-status" id="booking-status" role="status" aria-live="polite">Ładuję kalendarz…</p>
-          <button class="btn btn-primary" id="booking-submit" type="submit" disabled>Zarezerwuj konsultację</button>
-          <noscript>Rezerwacje wymagają JavaScript. Możesz też skontaktować się z salonem przez WhatsApp: +48 696 293 848.</noscript>
+          <button class="btn btn-primary" id="booking-submit" type="submit" disabled>Zarezerwuj wizytę</button>
+          <noscript>Rezerwacje wymagają JavaScript. Możesz też skontaktować się z salonem przez WhatsApp: +48 665 638 033.</noscript>
         </form>
         <div class="booking-result" id="booking-result" tabindex="-1" hidden>
           <h3>Termin zarezerwowany</h3>
@@ -426,16 +503,18 @@
           <p id="booking-reference"></p>
           <p>Zachowaj numer rezerwacji. Nie musisz wysyłać wiadomości, aby termin pozostał zajęty.</p>
           <p id="booking-notification"></p>
+          <p id="booking-email-notification"></p>
           <a class="btn btn-primary" id="booking-whatsapp" target="_blank" rel="noopener noreferrer">Otwórz rozmowę WhatsApp</a>
           <p>Przycisk otworzy gotową wiadomość do salonu. Wyślij ją samodzielnie w WhatsAppie.</p>
-          <button class="text-button" id="booking-new" type="button">Zarezerwuj kolejną konsultację</button>
+          <button class="text-button" id="booking-new" type="button">Zarezerwuj kolejną wizytę</button>
         </div>
       </div>
     </div>
     <div class="privacy" id="dane-rezerwacji">
       <h3>Dane rezerwacji</h3>
-      <p>Imię, telefon, wybrana usługa i termin są zapisywane w systemie rezerwacji MissEye i PitSTOP. Dostęp do rezerwacji ma manager obsługujący obie marki w celu organizacji wizyty i kontaktu (działania przed zawarciem i wykonanie umowy, art. 6 ust. 1 lit. b RODO). Bez tych danych rezerwacja online nie jest możliwa. Nie podawaj tutaj informacji o stanie zdrowia. W sprawie dostępu do danych, ich poprawienia, usunięcia lub ograniczenia przetwarzania skontaktuj się przez WhatsApp: +48 696 293 848. Przysługuje Ci prawo wniesienia skargi do Prezesa UODO.</p>
+      <p>Imię, telefon, wybrana usługa i termin są zapisywane w systemie rezerwacji MissEye i PitSTOP. Dostęp do rezerwacji ma manager obsługujący obie marki w celu organizacji wizyty i kontaktu (działania przed zawarciem i wykonanie umowy, art. 6 ust. 1 lit. b RODO). Bez tych danych rezerwacja online nie jest możliwa. Nie podawaj tutaj informacji o stanie zdrowia. W sprawie dostępu do danych, ich poprawienia, usunięcia lub ograniczenia przetwarzania skontaktuj się przez WhatsApp: +48 665 638 033. Przysługuje Ci prawo wniesienia skargi do Prezesa UODO.</p>
       <p>Opcjonalne potwierdzenie WhatsApp jest obsługiwane przez Meta na podstawie dobrowolnej zgody (art. 6 ust. 1 lit. a RODO), którą możesz wycofać przez kontakt z salonem. Dane nie są publikowane w kalendarzu. Pełne dane administratora, okres przechowywania i informacje o dostawcach hostingu oraz transferach danych wymagają uzupełnienia przed publicznym uruchomieniem rezerwacji.</p>
+      <p>Opcjonalny adres e-mail zapisujemy wyłącznie po osobnej zgodzie na przypomnienie (art. 6 ust. 1 lit. a RODO). Przekazujemy go dostawcy poczty hostingu w celu wysłania organizacyjnej wiadomości, bez marketingu. Wycofanie zgody przez managera zatrzymuje kolejne przypomnienia i usuwa adres z rezerwacji; wiadomości już wysłanej nie można cofnąć.</p>
     </div>
   </div>
 </section>
@@ -447,11 +526,11 @@
       <div><p class="lead">Zaczynamy od dwóch marek w Wielkopolsce. Docelowo chcemy łączyć specjalistów z całej Polski — od wiedzy i pierwszego kontaktu z klientem po rozwój własnego biznesu.</p><span class="planned-label">Platforma ogólnopolska jest w planach</span></div>
     </div>
     <div class="roadmap">
-      <article><span class="roadmap-status available">01 / DZIAŁAMY LOKALNIE</span><h3>Wizyty i relacje</h3><p>MissEye, PitSTOP, cztery obszary usług i konsultacje online. To nasz punkt wyjścia.</p></article>
+      <article><span class="roadmap-status available">01 / DZIAŁAMY LOKALNIE</span><h3>Wizyty i relacje</h3><p>MissEye, PitSTOP, cztery obszary usług i rezerwacje online. To nasz punkt wyjścia.</p></article>
       <article><span class="roadmap-status">02 / PLANUJEMY</span><h3>Wiedza i społeczność</h3><p>Edukacja klientów, poradniki, wymiana doświadczeń i szkolenia dla branży beauty.</p></article>
       <article><span class="roadmap-status">03 / PLANUJEMY</span><h3>Rozwój Twojej marki</h3><p>Profile specjalistów, pozyskiwanie zapytań, marketing, wsparcie sprzedaży i oferta biznesowa.</p></article>
     </div>
-    <div class="partner-contact"><p>Pracujesz w beauty i chcesz porozmawiać o przyszłej współpracy?</p><a class="btn btn-ghost" href="https://wa.me/48696293848?text=Dzie%C5%84%20dobry%2C%20chc%C4%99%20porozmawia%C4%87%20o%20wsp%C3%B3%C5%82pracy%20beauty." target="_blank" rel="noopener noreferrer">Porozmawiaj z managerem ↗</a></div>
+    <div class="partner-contact"><p>Pracujesz w beauty i chcesz porozmawiać o przyszłej współpracy?</p><a class="btn btn-ghost" href="https://wa.me/48665638033?text=Dzie%C5%84%20dobry%2C%20chc%C4%99%20porozmawia%C4%87%20o%20wsp%C3%B3%C5%82pracy%20beauty." target="_blank" rel="noopener noreferrer">Porozmawiaj z managerem ↗</a></div>
     <p class="gallery-note">Kontakt otwiera WhatsApp — wiadomość wysyłasz samodzielnie. Nie jest to jeszcze rejestracja partnera ani zakup szkolenia.</p>
   </div>
 </section>
@@ -460,11 +539,18 @@
   <div class="wrap">
     <p class="kicker">Jeden kontakt. Dwie marki.</p>
     <h2 class="title">Daj sobie chwilę. Resztę ustalimy razem.</h2>
-    <a class="phone" href="tel:+48696293848">696 293 848</a>
+    <div class="manager-contact">
+      <span class="manager-contact-label">Manager PitSTOP × MissEye</span>
+      <a class="manager-phone" href="tel:+48665638033" aria-label="Zadzwoń do managera: +48 665 638 033">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z"/></svg>
+        <span class="manager-phone-number">665 638 033</span>
+      </a>
+      <span class="manager-contact-hint">Telefon / WhatsApp · +48</span>
+    </div>
     <p class="loc">Manager MissEye i PitSTOP · MissEye: Września · PitSTOP: Września / Poznań, miejsce do uzgodnienia</p>
     <div class="contact-links">
       <a class="btn btn-primary" href="#rezerwacja">Rezerwacja online</a>
-      <a class="btn btn-ghost" href="https://wa.me/48696293848" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a class="btn btn-ghost" href="https://wa.me/48665638033" target="_blank" rel="noopener noreferrer">WhatsApp</a>
       <a class="btn btn-ghost" href="https://instagram.com/misseye.smp" target="_blank" rel="noopener">Instagram SMP</a>
       <a class="btn btn-ghost" href="https://instagram.com/misseye.pm" target="_blank" rel="noopener">Instagram PM</a>
       <a class="btn btn-ghost" href="https://instagram.com/do_nails.beauty" target="_blank" rel="noopener noreferrer">Instagram PitSTOP</a>

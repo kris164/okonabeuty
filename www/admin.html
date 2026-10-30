@@ -4,13 +4,23 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>MissEye × PitSTOP — panel managera</title>
+  <title>PitSTOP × MissEye — panel managera</title>
   <link rel="stylesheet" href="/booking.css">
   <script src="/admin.js" defer></script>
 </head>
 <body class="admin-page">
+  <svg class="brand-symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="mark-nail" viewBox="0 0 64 48"><path d="M20 40V18C20 1 44 1 44 18V40Q32 46 20 40Z M23 32Q32 27 41 32 M27 13Q30 8 35 10"/></symbol>
+      <symbol id="mark-eye" viewBox="0 0 64 48"><path d="M5 25Q32 1 59 25Q32 47 5 25Z M12 14L9 8 M32 8V2 M52 14L55 8"/><circle cx="32" cy="25" r="8"/></symbol>
+    </defs>
+  </svg>
   <a href="/">← Strona główna</a>
-  <h1>MissEye × PitSTOP — panel managera</h1>
+  <h1>PitSTOP × MissEye — panel managera</h1>
+  <div class="brand-legend" aria-label="Specjalistki i oznaczenia kalendarzy">
+    <div class="pitstop-1"><svg class="brand-mark" aria-hidden="true"><use href="#mark-nail"/></svg><span><strong>PitSTOP</strong><small>Nails art / podologia · szałwiowa zieleń</small></span></div>
+    <div class="misseye-1"><svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg><span><strong>MissEye</strong><small>SMP / makijaż permanentny · ciepła miedź</small></span></div>
+  </div>
   <form id="admin-login">
     <label for="admin-key">Klucz dostępu właściciela</label>
     <input class="admin-input" id="admin-key" type="password" autocomplete="current-password" required>
@@ -21,12 +31,68 @@
   <main id="admin-panel" hidden>
     <div class="toolbar">
       <label>Data wizyt <input class="admin-input" id="admin-date" type="date" required></label>
-      <label>Kalendarz <select class="admin-input" id="admin-specialist"><option value="">Obaj specjaliści</option></select></label>
+      <label>Kalendarz <select class="admin-input" id="admin-specialist"><option value="">Obie specjalistki</option></select></label>
+      <label>Widok <select class="admin-input" id="admin-view"><option value="day">Dzień</option><option value="week">Tydzień</option></select></label>
+      <button id="admin-prev" type="button" aria-label="Poprzedni okres">←</button>
+      <button id="admin-today" type="button">Dzisiaj</button>
+      <button id="admin-next" type="button" aria-label="Następny okres">→</button>
       <button id="admin-refresh" type="button">Odśwież</button>
       <button id="admin-logout" type="button">Wyloguj</button>
     </div>
-    <p>Dwa niezależne kalendarze, jeden manager. Konsultacje trwają 30 minut. Godziny w strefie Europe/Warsaw. Anulowanie odblokowuje termin tylko u danej osoby, ale nie wysyła wiadomości do klienta. Poinformuj go osobno.</p>
+    <p>Dwa niezależne kalendarze, jeden manager. Konsultacja trwa 30 min i zajmuje 60 min w kalendarzu. Czas każdego zabiegu zaokrąglamy w górę do pełnych godzin, np. 90 → 120 min, 220 → 240 min. Zaokrąglamy czas trwania, nie godzinę zakończenia. Godziny w strefie Europe/Warsaw. Miejsce PitSTOP ustal z klientem osobno. Przekładanie i anulowanie nie wysyła nowej wiadomości — poinformuj klienta.</p>
     <p>„Przyjęte przez WhatsApp” nie oznacza doręczenia. Status nieznany wymaga sprawdzenia w Meta; system nie ponawia wiadomości automatycznie.</p>
+    <div class="manager-tools">
+      <details>
+        <summary>+ Dodaj wizytę ręcznie</summary>
+        <form id="admin-create" class="manager-form">
+          <fieldset>
+            <label>Usługa <select id="create-service" required></select></label>
+            <label>Data <input id="create-date" type="date" required></label>
+            <label>Godzina <input id="create-time" type="time" step="1800" required></label>
+            <label>Imię <input id="create-name" minlength="2" maxlength="80" required></label>
+            <label>Telefon <input id="create-phone" type="tel" placeholder="+48 123 456 789" required></label>
+            <label><input id="create-consent" type="checkbox" required> Klient otrzymał informację o przetwarzaniu danych rezerwacji.</label>
+            <label><input id="create-whatsapp" type="checkbox"> Klient wyraził zgodę na automatyczne potwierdzenie WhatsApp (wymaga aktywnej integracji).</label>
+            <label><input id="create-email-consent" type="checkbox" disabled> Klient wyraził osobną zgodę na przypomnienie e-mail.</label>
+            <label>E-mail do przypomnienia <input id="create-email" type="email" maxlength="254" disabled></label>
+          </fieldset>
+          <p>Starty co 30 minut, w godzinach pracy. System nie ominie kolizji ani blokad.</p>
+          <button type="submit">Zapisz wizytę</button>
+          <p class="mutation-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+      <details>
+        <summary>+ Zablokuj przerwę lub urlop</summary>
+        <form id="admin-block" class="manager-form">
+          <fieldset>
+            <label>Specjalistka <select id="block-specialist" required></select></label>
+            <label>Od dnia <input id="block-date" type="date" required></label>
+            <label>Od godziny <input id="block-time" type="time" value="08:00" required></label>
+            <label>Do dnia <input id="block-end-date" type="date" required></label>
+            <label>Do godziny <input id="block-end-time" type="time" value="20:00" required></label>
+            <label>Rodzaj <select id="block-reason"><option value="break">Przerwa</option><option value="leave">Urlop / nieobecność</option><option value="other">Inna niedostępność</option></select></label>
+          </fieldset>
+          <p>Blokada może obejmować kilka dni. Nie anuluje istniejących wizyt — kolizja zatrzyma zapis. Nie wpisuj danych zdrowotnych.</p>
+          <button type="submit">Zapisz blokadę</button>
+          <p class="mutation-status" role="status" aria-live="polite"></p>
+        </form>
+      </details>
+    </div>
+    <details class="public-offer">
+      <summary>Cennik i dni przyjęć PitSTOP — edycja</summary>
+      <p>Puste ceny oznaczają „Cena do ustalenia”. Podaj kwoty brutto w PLN. Jedno miasto na dzień; dojazdy i przerwy blokuj ręcznie. Zmiana miejsca lub zamknięcie dnia z przyszłą wizytą zostanie odrzucone. Zapisane wizyty zachowują ustaloną cenę.</p>
+      <form id="admin-offer" class="manager-form">
+        <fieldset id="offer-fields"></fieldset>
+        <button type="submit">Zapisz cennik i dni przyjęć</button>
+        <p class="mutation-status" role="status" aria-live="polite"></p>
+      </form>
+    </details>
+    <p id="admin-email-note"></p>
+    <h2 id="calendar-heading">Kalendarz</h2>
+    <p>Kliknij wpis, aby rozwinąć szczegóły i działania poniżej. PitSTOP po lewej, MissEye po prawej w każdym dniu. Wysokość wizyty przedstawia cały czas zajęty w kalendarzu; szare wpisy to ręczne blokady bez zaokrąglania.</p>
+    <div class="calendar-scroll" tabindex="0" role="region" aria-label="Kalendarz wizyt z osią czasu">
+      <div id="admin-calendar"></div>
+    </div>
     <div id="admin-bookings"></div>
   </main>
 </body>

@@ -14,8 +14,25 @@ while (!is_file($barrier)) {
 }
 $store = new \Misseye\BookingStore($file);
 try {
-    $result = $store->reserve(json_decode($payload, true, 512, JSON_THROW_ON_ERROR), false, new DateTimeImmutable('2026-10-29T06:00:00Z'));
-    echo json_encode(['status' => $result['created'] ? 201 : 200], JSON_THROW_ON_ERROR);
+    $input = json_decode($payload, true, 512, JSON_THROW_ON_ERROR);
+    $now = new DateTimeImmutable('2026-10-29T06:00:00Z');
+    if (($input['_operation'] ?? null) === 'block') {
+        $store->addBlock($input, $now);
+        $status = 201;
+    } elseif (($input['_operation'] ?? null) === 'reschedule') {
+        $store->reschedule($input['id'], $input, $now);
+        $status = 200;
+    } elseif (($input['_operation'] ?? null) === 'offer') {
+        unset($input['_operation']);
+        $store->saveOffer($input, $now);
+        $status = 200;
+    } elseif (($input['_operation'] ?? null) === 'email-claim') {
+        $status = $store->claimEmailReminder($input['id'], $input['starts'], $now) === null ? 409 : 200;
+    } else {
+        $result = $store->reserve($input, false, $now);
+        $status = $result['created'] ? 201 : 200;
+    }
+    echo json_encode(['status' => $status], JSON_THROW_ON_ERROR);
 } catch (\Misseye\HttpError $error) {
     echo json_encode(['status' => $error->status], JSON_THROW_ON_ERROR);
 }

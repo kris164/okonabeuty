@@ -12,4 +12,9 @@ return [
         'template_name' => '',
         'template_language' => 'pl',
     ],
+    'email' => [
+        'enabled' => false,
+        'from' => '',
+        'reply_to' => '',
+    ],
 ];

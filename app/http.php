@@ -34,7 +34,7 @@ function loadConfig(?string $file = null): array
     }
     $config = require $file;
     if (!is_array($config) || !is_string($config['admin_token'] ?? null) || strlen($config['admin_token']) < 32
-        || !is_string($config['origin'] ?? null) || !is_string($config['data_file'] ?? null)
+        || !is_string($config['origin'] ?? null)
         || !is_array($config['whatsapp'] ?? null)) {
         throw new RuntimeException('Invalid private configuration.');
     }
@@ -45,12 +45,25 @@ function loadConfig(?string $file = null): array
         throw new RuntimeException('Configure origin as an HTTP(S) origin, without a path.');
     }
     $config['origin'] = rtrim($config['origin'], '/');
-    assertPrivatePath($config['data_file']);
-    $config['rate_file'] = dirname($config['data_file']) . DIRECTORY_SEPARATOR . 'rate-limits.json';
-    assertPrivatePath($config['rate_file']);
+    $config['storage'] ??= 'mysql';
+    if ($config['storage'] === 'mysql') {
+        validateDatabase($config['database'] ?? null);
+    } elseif ($config['storage'] === 'json' && is_string($config['data_file'] ?? null)) {
+        assertPrivatePath($config['data_file']);
+        $config['rate_file'] = dirname($config['data_file']) . DIRECTORY_SEPARATOR . 'rate-limits.json';
+        assertPrivatePath($config['rate_file']);
+    } else {
+        throw new RuntimeException('Invalid storage backend. MySQL is the default; JSON requires explicit legacy configuration.');
+    }
     $config['whatsapp'] = whatsappConfig($config['whatsapp']);
     $config['email'] = emailConfig($config['email'] ?? null);
     return $config;
+}
+
+function bookingStore(array $config): BookingStore
+{
+    return new BookingStore($config['storage'] === 'mysql'
+        ? new MysqlStore(connectMysql($config['database'])) : $config['data_file']);
 }
 
 function securityHeaders(): void
@@ -64,6 +77,10 @@ function securityHeaders(): void
 
 function rateLimit(array $config, string $address): void
 {
+    if ($config['storage'] === 'mysql') {
+        mysqlRateLimit(connectMysql($config['database']), hash_hmac('sha256', $address, $config['admin_token']));
+        return;
+    }
     $file = new JsonFile($config['rate_file'], static function (mixed $data): void {
         if (!is_array($data) || ($data['version'] ?? null) !== 1 || !is_array($data['clients'] ?? null)) {
             throw new RuntimeException('Invalid rate limit storage.');
@@ -114,7 +131,7 @@ function handleApi(
             throw new HttpError(401, 'Nieprawidłowy klucz panelu.');
         }
     }
-    $store = new BookingStore($config['data_file']);
+    $store = bookingStore($config);
     $store->recoverNotifications($config['whatsapp'] !== null);
     $store->recoverEmailReminders(new DateTimeImmutable());
     if ($method === 'GET' && $path === '/api/config') {

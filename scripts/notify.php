@@ -11,7 +11,7 @@ if ($config['whatsapp'] === null) {
     fwrite(STDERR, "WhatsApp Cloud API is not configured.\n");
     exit(1);
 }
-$store = new \Misseye\BookingStore($config['data_file']);
+$store = \Misseye\bookingStore($config);
 $store->recoverNotifications(true);
 foreach ($store->pending() as $booking) {
     \Misseye\notify($store, $booking['id'], $config['whatsapp']);

@@ -1050,7 +1050,7 @@ try {
         (new BookingStore($path))->initialize();
         $configFile = $temporary . DIRECTORY_SEPARATOR . 'test-config.php';
         $config = [
-            'origin' => $base, 'admin_token' => str_repeat('a', 48), 'data_file' => $path,
+            'origin' => $base, 'admin_token' => str_repeat('a', 48), 'storage' => 'json', 'data_file' => $path,
             'whatsapp' => ['access_token' => '', 'phone_number_id' => '', 'graph_version' => '', 'template_name' => '', 'template_language' => 'pl'],
             'email' => ['enabled' => true, 'from' => 'salon@example.invalid', 'reply_to' => 'salon@example.invalid'],
         ];

@@ -11,7 +11,7 @@ if ($config['email'] === null) {
     fwrite(STDERR, "Email reminders are disabled. Configure hosting mail, sender and reply-to first.\n");
     exit(1);
 }
-$report = \Misseye\sendDueReminders(new \Misseye\BookingStore($config['data_file']), $config['email']);
+$report = \Misseye\sendDueReminders(\Misseye\bookingStore($config), $config['email']);
 echo json_encode($report, JSON_THROW_ON_ERROR) . "\n";
 if ($report['failed'] || $report['unknown']) {
     exit(2);

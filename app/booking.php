@@ -8,6 +8,7 @@ use DateTimeZone;
 use RuntimeException;
 
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'json.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'mysql.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'offer.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'email.php';
 
@@ -249,7 +250,7 @@ function validateBookings(mixed $data): void
 {
     if (!is_array($data) || ($data['version'] ?? null) !== 1
         || !isset($data['bookings']) || !is_array($data['bookings']) || !array_is_list($data['bookings'])) {
-        throw new RuntimeException('Invalid booking JSON schema. Restore a verified backup.');
+        throw new RuntimeException('Invalid booking storage schema. Restore a verified backup.');
     }
     if (array_key_exists('offer', $data)) {
         validateOffer($data['offer']);
@@ -265,7 +266,7 @@ function validateBookings(mixed $data): void
             || !array_key_exists('message_id', $booking) || ($booking['message_id'] !== null && !is_string($booking['message_id']))
             || !array_key_exists('notification_started_at', $booking)
             || ($booking['notification_started_at'] !== null && !is_int($booking['notification_started_at']))) {
-            throw new RuntimeException('Invalid booking record in JSON storage.');
+            throw new RuntimeException('Invalid booking record in storage.');
         }
         try {
             $normalized = normalize([
@@ -276,14 +277,14 @@ function validateBookings(mixed $data): void
                 'email' => $booking['email'] ?? '', 'emailConsent' => $booking['email_consent'] ?? false,
             ]);
         } catch (HttpError $error) {
-            throw new RuntimeException('Invalid booking fields in JSON storage.', 0, $error);
+            throw new RuntimeException('Invalid booking fields in storage.', 0, $error);
         }
         if ($normalized['name'] !== $booking['name'] || $normalized['phone'] !== $booking['phone']
             || instant($booking['date'], $booking['time']) !== $booking['starts']
             || $booking['ends'] !== $booking['starts'] + bookingReservedMinutes($booking) * 60000
             || (array_key_exists('revision', $booking) && (!is_int($booking['revision']) || $booking['revision'] < 0))
             || isset($ids[$booking['id']]) || isset($requests[$booking['request_id']])) {
-            throw new RuntimeException('Inconsistent booking records in JSON storage.');
+            throw new RuntimeException('Inconsistent booking records in storage.');
         }
         $ids[$booking['id']] = $requests[$booking['request_id']] = true;
         if (array_key_exists('email_consent', $booking)
@@ -352,11 +353,11 @@ function validateBookings(mixed $data): void
 
 final class BookingStore
 {
-    private JsonFile $file;
+    private JsonFile|MysqlStore $file;
 
-    public function __construct(string $path)
+    public function __construct(string|MysqlStore $storage)
     {
-        $this->file = new JsonFile($path, validateBookings(...));
+        $this->file = is_string($storage) ? new JsonFile($storage, validateBookings(...)) : $storage;
     }
 
     public function initialize(): void
@@ -368,7 +369,7 @@ final class BookingStore
     {
         $this->file->write(static function (array &$data) use ($bookings): void {
             if ($data['bookings'] !== []) {
-                throw new RuntimeException('JSON storage is not empty. Import refused.');
+                throw new RuntimeException('Booking storage is not empty. Import refused.');
             }
             $data['bookings'] = $bookings;
         });

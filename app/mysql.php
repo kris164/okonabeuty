@@ -29,7 +29,8 @@ function connectMysql(array $database): PDO
 {
     validateDatabase($database);
     if (!extension_loaded('pdo_mysql')) {
-        throw new RuntimeException('Enable the PHP pdo_mysql extension.');
+        error_log('MySQL unavailable: the PHP pdo_mysql extension is not enabled.');
+        throw new HttpError(503, 'Baza rezerwacji jest niedostępna: PHP nie ma włączonego rozszerzenia pdo_mysql. Skontaktuj się z administratorem hostingu.');
     }
     $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -52,8 +53,9 @@ function connectMysql(array $database): PDO
         $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         return $pdo;
     } catch (PDOException $error) {
-        error_log('MySQL connection failed (SQLSTATE ' . $error->getCode() . ').');
-        throw new HttpError(503, 'Baza rezerwacji jest chwilowo niedostępna. Skontaktuj się z managerem.');
+        $driverCode = $error->errorInfo[1] ?? 'unknown';
+        error_log('MySQL connection failed (SQLSTATE ' . $error->getCode() . ', driver code ' . $driverCode . '): ' . $error->getMessage());
+        throw new HttpError(503, 'Nie można połączyć z bazą rezerwacji. Szczegóły błędu zapisano w logu PHP; skontaktuj się z administratorem hostingu.');
     }
 }
 
@@ -214,8 +216,9 @@ final class MysqlStore
     public static function rethrow(Throwable $error): never
     {
         if ($error instanceof PDOException) {
-            error_log('MySQL operation failed (SQLSTATE ' . $error->getCode() . ', code ' . ($error->errorInfo[1] ?? 0) . ').');
-            throw new HttpError(503, 'Nie udało się potwierdzić operacji w bazie. Ponów to samo zgłoszenie lub skontaktuj się z managerem.');
+            error_log('MySQL operation failed (SQLSTATE ' . $error->getCode() . ', driver code '
+                . ($error->errorInfo[1] ?? 'unknown') . '): ' . $error->getMessage());
+            throw new HttpError(503, 'Wystąpił błąd bazy rezerwacji. Szczegóły zapisano w logu PHP. Ponów to samo zgłoszenie lub skontaktuj się z managerem.');
         }
         throw $error;
     }

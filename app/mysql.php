@@ -53,9 +53,18 @@ function connectMysql(array $database): PDO
         $pdo->exec('SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ');
         return $pdo;
     } catch (PDOException $error) {
-        $driverCode = $error->errorInfo[1] ?? 'unknown';
+        $driverCode = (int) ($error->errorInfo[1] ?? 0);
         error_log('MySQL connection failed (SQLSTATE ' . $error->getCode() . ', driver code ' . $driverCode . '): ' . $error->getMessage());
-        throw new HttpError(503, 'Nie można połączyć z bazą rezerwacji. Szczegóły błędu zapisano w logu PHP; skontaktuj się z administratorem hostingu.');
+        $message = match ($driverCode) {
+            1049 => 'MySQL nie znalazł wskazanej bazy. Sprawdź nazwę bazy w config.php.',
+            1044 => 'MySQL odrzucił dostęp do wskazanej bazy. Sprawdź nazwę bazy i uprawnienia użytkownika.',
+            1045 => 'MySQL odrzucił login lub hasło użytkownika. Sprawdź dane w config.php.',
+            2005 => 'Nie znaleziono hosta MySQL. Sprawdź nazwę hosta i DNS w config.php.',
+            2002, 2003 => 'Nie można połączyć się z hostem MySQL. Sprawdź host, port i dostęp sieciowy hostingu.',
+            1130 => 'Serwer MySQL nie zezwala na połączenie z tego hostingu. Sprawdź dozwolone hosty w OVH.',
+            default => 'Nie można połączyć z bazą MySQL (kod błędu ' . ($driverCode ?: 'nieznany') . '). Sprawdź log PHP i konfigurację bazy.',
+        };
+        throw new HttpError(503, $message);
     }
 }
 
@@ -81,6 +90,22 @@ final class MysqlStore
             }
         }
         $this->targetStatus();
+    }
+
+    public function initializeEmptyIfNeeded(): void
+    {
+        try {
+            $status = $this->targetStatus();
+            if ($status === 'schema_missing') {
+                $this->installSchema();
+                $status = $this->targetStatus();
+            }
+            if ($status === 'uninitialized') {
+                $this->initialize(['version' => 1, 'bookings' => []]);
+            }
+        } catch (PDOException $error) {
+            self::rethrow($error);
+        }
     }
 
     public function targetStatus(): string

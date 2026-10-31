@@ -2,10 +2,9 @@
 
 System działa na **PHP 8.4+ (64-bit), PDO MySQL i MySQL 8.4+ / InnoDB**.
 Nie wymaga Node.js, SQLite ani Composera do działania na hostingu.
-MySQL jest domyślnym magazynem rezerwacji, blokad, oferty i limitów żądań.
-Plik JSON służy wyłącznie jako źródło migracji, prywatny eksport lub
-jawnie wybrany tryb zgodności `storage=json`; awaria MySQL nigdy nie
-przełącza aplikacji na JSON ani na pusty kalendarz.
+MySQL jest magazynem rezerwacji, blokad, oferty i limitów żądań.
+Przy pierwszym żądaniu aplikacja tworzy schemat oraz pusty kalendarz,
+ale tylko w pustej bazie; istniejących danych nie nadpisuje.
 Opcjonalna automatyczna wysyłka WhatsApp wymaga rozszerzenia PHP cURL
 oraz skonfigurowanego konta Meta Cloud API.
 
@@ -305,10 +304,10 @@ nie przypomnienia. Rezerwacje nadal nie blokują Booksy ani Google Calendar.
 app/                    prywatny kod PHP
 config.example.php      wzór konfiguracji, bez sekretów
 config.php              prywatna konfiguracja; ignorowana przez Git
-data/                  prywatne źródła migracji i eksporty; ignorowane przez Git
+data/                  prywatne kopie/źródła starszych instalacji; ignorowane przez Git
 www/                    JEDYNY katalog publiczny
 scripts/mysql-schema.sql schemat InnoDB, bez danych klientów i sekretów
-scripts/migrate-mysql.php kontrolowana migracja JSON -> MySQL
+scripts/migrate-mysql.php narzędzie wyłącznie dla instalacji ze starszymi danymi
 scripts/notify.php      opcjonalne zadanie CLI/cron WhatsApp
 scripts/send-reminders.php prywatne zadanie CLI/cron przypomnień e-mail
 templates/              historyczny wzór JSON (nie inicjalizuje MySQL)
@@ -321,9 +320,9 @@ Nie publikuj całego repozytorium jako katalogu WWW.
 
 Potrzebne są PHP z `pdo_mysql` i osobna lokalna baza MySQL 8.4.
 Nie używaj produkcyjnej bazy OVH do lokalnych testów.
-Uruchom `php setup.php --origin=http://127.0.0.1:3000`, uzupełnij prywatnie
-lokalne dane bazy w utworzonej konfiguracji, następnie wykonaj migrację
-opisaną poniżej. Dopiero po jej zakończeniu:
+Uruchom `php setup.php --origin=http://127.0.0.1:3000` i uzupełnij prywatnie
+dane lokalnej bazy w utworzonej konfiguracji. Setup tworzy pusty kalendarz,
+jeśli baza aplikacji jest pusta. Następnie uruchom:
 
 ```powershell
 .\start.cmd
@@ -337,30 +336,13 @@ Skrypt uruchamia konfigurację CLI, a następnie serwer testowy:
 Klucz panelu to `admin_token` w prywatnym `config.php`. Skrypt generuje
 go losowo przy pierwszym utworzeniu konfiguracji. Istniejącego `config.php`
 nie nadpisuje i nie importuje automatycznie dawnego `.env`.
-Setup nie tworzy pustej bazy ani nie migruje wizyt; sprawdza połączenie
-i gotowość schematu. Przy nowej konfiguracji zakończy się kodem 1, dopóki
-nie uzupełnisz hasła i nie wykonasz migracji.
+Setup sprawdza połączenie i stan bazy. Po uzupełnieniu konfiguracji
+nie potrzeba dostępu do terminala hostingu: pierwsze żądanie WWW utworzy
+schemat i pusty kalendarz, o ile baza nie zawiera już danych.
 Aktualne ustawienia edytuj w `config.php`, nie w dawnym `.env`.
 Po zmianie konfiguracji odśwież formularz; PHP odczytuje ją przy każdym żądaniu.
 
 Serwer wbudowany PHP służy wyłącznie do lokalnych testów.
-
-### Migracja wcześniejszych rezerwacji SQLite
-
-Jeśli istnieje stara baza SQLite, nie twórz pustego MySQL. Zatrzymaj
-poprzedni serwer i wyeksportuj SQLite do prywatnego JSON:
-
-```powershell
-.\.runtime\node.exe scripts\migrate-sqlite.mjs
-```
-
-Do samej migracji potrzebny jest Node 24 z `node:sqlite`; na hostingu
-PHP nie jest on potrzebny. Można wskazać dwa argumenty: źródło SQLite
-i docelowy JSON. Migrator zachowuje identyfikatory, dane, zgody,
-anulowania oraz wyniki powiadomień. Nie nadpisuje istniejącego JSON
-ani nie zmienia oryginalnej bazy. Przerwane wysyłki oznacza jako nieznane.
-Nie uruchamiaj go podczas przyjmowania rezerwacji na starym serwerze.
-Następnie użyj tego JSON jako `--source` w migracji do MySQL.
 
 ## Instalacja na hostingu OVH przez FTPS
 
@@ -392,8 +374,10 @@ certyfikatu dla Twojej domeny.
    na prywatną ścieżkę do zaufanego CA. Weryfikacja certyfikatu pozostaje
    włączona; nie ustawiaj niebezpiecznego obejścia. Puste `ssl_ca`
    nie wymusza TLS — sprawdź wymagania połączenia wewnętrznego OVH.
-4. Wstrzymaj stary backend i cron, wykonaj backup, a następnie migrację
-   opisaną poniżej. Nie nadpisuj konfiguracji ani plików `data`.
+4. Przy pierwszej instalacji upewnij się, że wskazana baza jest właściwa
+  i pusta. Pierwsze żądanie do `/api/config` utworzy schemat oraz pusty
+  kalendarz. Nie uruchamiaj go na bazie z istniejącymi danymi aplikacji.
+  Przy aktualizacji zachowaj bazę, konfigurację i pliki danych.
    Zalecane prawa prywatnych katalogów to `700`, plików `600` przy zgodnym
    właścicielu procesu PHP. Nie używaj `777`. Bieżące rezerwacje i limity
    HTTP nie wymagają zapisu JSON, tylko transakcji w bazie.
@@ -412,53 +396,15 @@ do katalogu publicznego. Nie potrzeba procesu Node.js.
 Przy aktualizacjach **nie nadpisuj `config.php` i żadnych plików `data`**.
 Paczka nie zawiera prywatnej konfiguracji ani rzeczywistych rezerwacji.
 
-## Migracja JSON do MySQL — bez utraty historii
+## Nowa, pusta baza MySQL
 
-Nie znamy stanu danych na hostingu. Najpierw znajdź istniejący magazyn,
-zatrzymaj przyjmowanie zapisów i stare zadania cron, wykonaj prywatny backup.
-Nie usuwaj źródła. Wszystkie procesy WWW i cron po przełączeniu muszą
-korzystać z tej samej bazy i konfiguracji.
-
-Z katalogu aplikacji, przez SSH lub prywatne zadanie CLI na hostingu:
-
-```sh
-php setup.php
-php scripts/migrate-mysql.php --dry-run
-php scripts/migrate-mysql.php --apply
-```
-
-Domyślne źródło to prywatny `data/bookings.json`. Inne położenie wskaż
-argumentem `--source=/pelna/prywatna/sciezka/bookings.json` w obu wywołaniach.
-`--dry-run` waliduje cały dokument i stan docelowy, pokazuje tylko liczby
-wizyt/blokad i informację o ofercie; nie tworzy tabel ani nie zapisuje SQL.
-`--apply` zakłada schemat z `scripts/mysql-schema.sql`, importuje cały stan
-w jednej transakcji, następnie porównuje wynik. Źródło jest odczytywane
-pod wspólną blokadą i pozostaje bez zmian. Trzeba jednak wyłączyć stary
-backend również po migracji, aby nie przyjmował kolejnych zapisów do JSON.
-
-Brakujący lub uszkodzony JSON powoduje błąd, **nie pustą inicjalizację**.
-Wyłącznie po potwierdzeniu, że nie istnieją żadne wizyty ani wcześniejszy
-magazyn, można użyć:
-
-```sh
-php scripts/migrate-mysql.php --dry-run --empty
-php scripts/migrate-mysql.php --apply --empty
-```
-
-`--empty` odmawia działania, jeśli wykryje domyślne stare dane JSON/SQLite
-lub plik wskazany dawnym `data_file`. Nie potrafi odnaleźć plików o dowolnych
-nazwach na całym koncie — tę kontrolę wykonuje operator.
-Każdy import odmawia nadpisania już zainicjalizowanego MySQL, nawet pustego.
-Ponowne wykonanie po przerwanym połączeniu wymaga najpierw sprawdzenia
-stanu bazy, nie resetowania tabel. Schemat DDL nie jest transakcyjny;
-przerwane tworzenie tabel można dokończyć ze zweryfikowanego pliku SQL,
-natomiast import danych jest zawsze atomowy.
-
-Schemat można wgrać przez phpMyAdmin, ale nie uruchamia to migracji danych.
-Nie wystawiaj konfiguratora ani migratora przez publiczny URL.
-Przy braku SSH użyj prywatnego CLI/harmonogramu OVH lub pomocy operatora.
-Do instalacji potrzebne są prawa CREATE/ALTER/INDEX oraz SELECT/INSERT/
-UPDATE/DELETE; użytkownik runtime po instalacji potrzebuje tylko DML.
+Nie potrzeba SSH, Crona ani migratora. Po wgraniu plików i uzupełnieniu
+prywatnego `config.php`, otwórz `https://okonabeauty.pl/api/config`.
+Pierwsze żądanie utworzy tabele i pusty kalendarz, jeśli baza aplikacji
+jest pusta lub zawiera wyłącznie pusty schemat. Inicjalizacja odmawia
+działania, jeśli wykryje niekompletny schemat albo istniejące rekordy.
+Użytkownik MySQL musi mieć uprawnienia do tworzenia tabel. Nie używaj
+tej procedury, jeśli trzeba zachować wizyty ze starszej instalacji.
 
 ## Jak działa zapis MySQL
 

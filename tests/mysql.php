@@ -129,6 +129,18 @@ function cli(array $arguments, ?string $applicationRoot = null): array
 }
 
 try {
+    run('automatic initialization creates only an empty MySQL calendar and is repeat-safe', function () use ($now): void {
+        $sql = resetDatabase();
+        check($sql->targetStatus() === 'uninitialized');
+        $sql->initializeEmptyIfNeeded();
+        check($sql->targetStatus() === 'initialized');
+        check($sql->read(static fn ($data) => $data['bookings']) === []);
+        $store = new BookingStore($sql);
+        $booking = $store->reserve(input(), false, $now)['booking'];
+        $sql->initializeEmptyIfNeeded();
+        check($store->get($booking['id']) === $booking);
+    });
+
     run('schema is explicit and repeated installation never wipes data', function () use ($pdo): void {
         $sql = resetDatabase();
         check($sql->targetStatus() === 'uninitialized');

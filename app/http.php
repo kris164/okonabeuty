@@ -78,7 +78,9 @@ function securityHeaders(): void
 function rateLimit(array $config, string $address): void
 {
     if ($config['storage'] === 'mysql') {
-        mysqlRateLimit(connectMysql($config['database']), hash_hmac('sha256', $address, $config['admin_token']));
+        $pdo = connectMysql($config['database']);
+        (new MysqlStore($pdo))->initializeEmptyIfNeeded();
+        mysqlRateLimit($pdo, hash_hmac('sha256', $address, $config['admin_token']));
         return;
     }
     $file = new JsonFile($config['rate_file'], static function (mixed $data): void {

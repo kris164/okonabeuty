@@ -1,6 +1,6 @@
 # MissEye × PitSTOP — PHP + MySQL 8.4 dla hostingu OVH
 
-System działa na **PHP 8.2+ (64-bit), PDO MySQL i MySQL 8.4+ / InnoDB**.
+System działa na **PHP 8.4+ (64-bit), PDO MySQL i MySQL 8.4+ / InnoDB**.
 Nie wymaga Node.js, SQLite ani Composera do działania na hostingu.
 MySQL jest domyślnym magazynem rezerwacji, blokad, oferty i limitów żądań.
 Plik JSON służy wyłącznie jako źródło migracji, prywatny eksport lub
@@ -364,7 +364,7 @@ Następnie użyj tego JSON jako `--source` w migracji do MySQL.
 
 ## Instalacja na hostingu OVH przez FTPS
 
-Najpierw ustaw w panelu OVH PHP 8.2 lub nowsze (zalecane 8.4), włącz
+Najpierw ustaw w panelu OVH PHP 8.4 lub nowsze, włącz
 rozszerzenie `pdo_mysql`, przygotuj bazę **MySQL 8.4** oraz
 katalog multisite na `www`. Włącz poprawny certyfikat SSL dla docelowej
 domeny, np. `okonabeauty.pl`, przed zbieraniem danych klientów.

@@ -5,8 +5,8 @@ if (PHP_SAPI !== 'cli') {
     http_response_code(404);
     exit;
 }
-if (PHP_VERSION_ID < 80200 || PHP_INT_SIZE < 8) {
-    throw new RuntimeException('PHP 8.2+ (64-bit) is required.');
+if (PHP_VERSION_ID < 80400 || PHP_INT_SIZE < 8) {
+    throw new RuntimeException('PHP 8.4+ (64-bit) is required.');
 }
 require __DIR__ . DIRECTORY_SEPARATOR . 'app' . DIRECTORY_SEPARATOR . 'http.php';
 

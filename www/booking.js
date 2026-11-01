@@ -16,8 +16,10 @@ let activeBookingId = '';
 let requestedService = '';
 let findingNearest = false;
 const daysStrip = document.querySelector('#booking-days');
+const retry = document.querySelector('#booking-retry');
 const emailConsent = document.querySelector('#booking-email-consent');
 const email = document.querySelector('#booking-email');
+let initializing = false;
 
 function syncEmailField() {
   const enabled = Boolean(config?.emailReminders && emailConsent.checked);
@@ -41,10 +43,20 @@ function showOffer() {
     for (const item of config.services.filter(item => item.specialistId === person.id)) {
       const row = document.createElement('div');
       const name = document.createElement('dt');
-      name.textContent = item.name;
+      const link = document.createElement('a');
+      link.href = '#rezerwacja';
+      link.dataset.service = item.id;
+      link.className = 'offer-service-link';
+      link.setAttribute('aria-label', `Wybierz usługę: ${item.name}`);
+      const label = document.createElement('span');
+      label.textContent = item.name;
+      const arrow = document.createElement('span');
+      arrow.textContent = '↗';
+      arrow.setAttribute('aria-hidden', 'true');
+      link.append(label, arrow);
       const duration = document.createElement('small');
       duration.textContent = `${item.minutes} min`;
-      name.append(duration);
+      name.append(link, duration);
       const price = document.createElement('dd');
       const amount = document.createElement('strong');
       amount.textContent = item.firstConsultationFree ? 'Pierwsza GRATIS' : item.priceLabel;
@@ -115,9 +127,12 @@ async function api(path, options = {}) {
 
 function updateSubmit() {
   submit.disabled = submitting || loading || !selectedTime || !config;
+  form.setAttribute('aria-busy', String(initializing || submitting || loading));
+  slots.setAttribute('aria-busy', String(loading));
 }
 
 async function loadSlots() {
+  retry.hidden = true;
   const details = config.services.find(item => item.id === service.value);
   if (!details) {
     message('Nieprawidłowa usługa. Odśwież stronę lub skontaktuj się z managerem.', true);
@@ -126,12 +141,14 @@ async function loadSlots() {
     updateSubmit();
     return;
   }
+  form.dataset.specialist = details.specialistId;
   document.querySelector('#booking-provider').textContent =
     `${details.specialist} · usługa ${details.minutes} min, rezerwacja ${details.reservedMinutes} min. ${details.location}. Termin blokuje tylko kalendarz tej osoby.`;
   const sequence = ++loadSequence;
   document.querySelector('#booking-price').textContent = 'Sprawdzam cenę…';
   selectedTime = '';
   slots.replaceChildren();
+  daysStrip.replaceChildren();
   loading = true;
   updateSubmit();
   message('Sprawdzam dostępne godziny…');
@@ -154,7 +171,13 @@ async function loadSlots() {
       button.setAttribute('aria-pressed', String(day.date === date.value));
       const label = new Intl.DateTimeFormat('pl-PL', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })
         .format(new Date(`${day.date}T12:00:00Z`));
-      button.textContent = `${label} · ${day.count ? `${day.count} terminów` : 'brak'}`;
+      const dayLabel = document.createElement('span');
+      dayLabel.textContent = label;
+      const count = document.createElement('span');
+      count.className = 'day-count';
+      count.textContent = day.count ? `Godziny: ${day.count}` : 'Brak miejsc';
+      button.append(dayLabel, count);
+      button.setAttribute('aria-label', `${label}: ${day.count ? `dostępnych godzin: ${day.count}` : 'brak wolnych godzin'}`);
       button.disabled = day.count === 0;
       button.addEventListener('click', () => { date.value = day.date; loadSlots(); });
       daysStrip.append(button);
@@ -177,13 +200,21 @@ async function loadSlots() {
       slots.append(button);
     }
     const sunday = new Date(`${date.value}T12:00:00Z`).getUTCDay() === 0;
+    if (!times.length) {
+      const empty = document.createElement('p');
+      empty.className = 'slots-empty';
+      empty.textContent = sunday ? 'W niedzielę odpoczywamy. Wybierz inny dzień.'
+        : 'Na ten dzień nie ma wolnych godzin. Sprawdź najbliższy termin.';
+      slots.append(empty);
+    }
     message(times.length ? 'Wybierz godzinę (czas polski).' : sunday
       ? 'Niedziela: brak zapisów online. Wybierz dzień od poniedziałku do soboty.'
       : 'Brak wolnych godzin. Wybierz inny dzień lub skontaktuj się przez WhatsApp.');
   } catch (error) {
     if (sequence === loadSequence) {
       document.querySelector('#booking-price').textContent = 'Nie można potwierdzić ceny — skontaktuj się z managerem.';
-      message(`${error.message} Zmień datę, aby spróbować ponownie.`, true);
+      retry.hidden = false;
+      message(`${error.message} Wczytaj terminy ponownie lub wybierz inną datę.`, true);
     }
   } finally {
     if (sequence === loadSequence) {
@@ -242,6 +273,7 @@ form.addEventListener('submit', async event => {
     };
   }
   submitting = true;
+  retry.hidden = true;
   fields.disabled = true;
   updateSubmit();
   message('Zapisuję rezerwację…');
@@ -305,6 +337,7 @@ for (const [id, delta] of [['booking-prev-days', -7], ['booking-next-days', 7]])
   });
 }
 document.querySelector('#booking-nearest').addEventListener('click', async () => {
+  retry.hidden = true;
   findingNearest = true;
   const sequence = ++loadSequence;
   selectedTime = '';
@@ -335,25 +368,37 @@ document.querySelector('#booking-nearest').addEventListener('click', async () =>
     updateSubmit();
   }
 });
-for (const link of document.querySelectorAll('[data-service]')) {
-  link.addEventListener('click', () => {
-    if (submitting || findingNearest || frozenRequest || !result.hidden) return;
-    requestedService = link.dataset.service;
-    if (!config) return;
-    service.value = requestedService;
-    loadSlots();
-  });
-}
+document.addEventListener('click', event => {
+  const link = event.target.closest('a[data-service]');
+  if (!link || submitting || findingNearest || frozenRequest || !result.hidden) return;
+  requestedService = link.dataset.service;
+  if (!config) return;
+  service.value = requestedService;
+  loadSlots();
+});
+retry.addEventListener('click', () => {
+  if (submitting || findingNearest || initializing || frozenRequest) return;
+  if (config) loadSlots();
+  else init();
+});
 
 async function init() {
+  initializing = true;
+  retry.hidden = true;
+  fields.disabled = true;
+  message('Wczytuję usługi i kalendarz…');
+  updateSubmit();
   if (location.protocol === 'file:') {
     document.querySelector('#offer-status').textContent = 'Cennik wymaga uruchomienia strony przez serwer. Ceny potwierdź z managerem.';
     message('Rezerwacje wymagają uruchomienia serwera. Otwórz stronę przez adres http://127.0.0.1:3000, a nie bezpośrednio z pliku.', true);
+    initializing = false;
+    updateSubmit();
     return;
   }
   try {
     config = await api('/api/config');
     showOffer();
+    service.replaceChildren();
     for (const person of config.specialists) {
       const group = document.createElement('optgroup');
       group.label = person.brand;
@@ -381,10 +426,16 @@ async function init() {
     fields.disabled = false;
     await loadSlots();
   } catch (error) {
-    if (!document.querySelector('#offer-status').hidden) {
-      document.querySelector('#offer-status').textContent = `${error.message} Cennik jest chwilowo niedostępny — ceny potwierdź z managerem.`;
-    }
+    config = undefined;
+    fields.disabled = true;
+    retry.hidden = false;
+    document.querySelector('#offer-status').hidden = false;
+    document.querySelector('#offer-status').textContent = `${error.message} Cennik jest chwilowo niedostępny — ceny potwierdź z managerem.`;
+    document.querySelector('#booking-wa-note').textContent = 'Kalendarz jest chwilowo niedostępny. Możesz skontaktować się z managerem przez telefon lub WhatsApp.';
     message(`${error.message} Rezerwacje są chwilowo niedostępne — skontaktuj się przez WhatsApp.`, true);
+  } finally {
+    initializing = false;
+    updateSubmit();
   }
 }
 init();

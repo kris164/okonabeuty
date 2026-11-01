@@ -44,14 +44,18 @@ function expect(callable $operation, ?int $status = null): void
     throw new RuntimeException('Expected an explicit failure.');
 }
 
-function resetDatabase(): MysqlStore
+function resetDatabase(int $version = \Misseye\MYSQL_SCHEMA_VERSION): MysqlStore
 {
     global $pdo;
-    foreach (['misseye_rates', 'misseye_blocks', 'misseye_bookings', 'misseye_state'] as $table) {
+    foreach (['misseye_migrations', 'misseye_calendars', 'misseye_rates', 'misseye_blocks', 'misseye_bookings', 'misseye_state'] as $table) {
         $pdo->exec('DROP TABLE IF EXISTS ' . $table);
     }
     $storage = new MysqlStore($pdo);
-    $storage->installSchema();
+    if ($version === 1) {
+        \Misseye\executeMysqlMigration($pdo, \Misseye\mysqlMigrationFiles()[1]);
+    } elseif ($version !== 0) {
+        $storage->installSchema();
+    }
     return $storage;
 }
 
@@ -108,13 +112,13 @@ function race(array $inputs): array
     return $statuses;
 }
 
-function cli(array $arguments, ?string $applicationRoot = null): array
+function cli(array $arguments, ?string $applicationRoot = null, string $script = 'migrate-mysql.php'): array
 {
     global $root, $configFile;
     $previous = getenv('MISSEYE_CONFIG');
     putenv('MISSEYE_CONFIG=' . $configFile);
     try {
-        $process = proc_open([...phpCommand(($applicationRoot ?? $root) . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'migrate-mysql.php'), ...$arguments],
+        $process = proc_open([...phpCommand(($applicationRoot ?? $root) . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . $script), ...$arguments],
             [0 => ['pipe', 'r'], 1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
         check(is_resource($process));
         fclose($pipes[0]);
@@ -129,15 +133,21 @@ function cli(array $arguments, ?string $applicationRoot = null): array
 }
 
 try {
-    run('automatic initialization creates only an empty MySQL calendar and is repeat-safe', function () use ($now): void {
+    run('runtime refuses an uninitialized database and never creates an empty calendar', function () use ($now, $config, $pdo): void {
+        $sql = resetDatabase(0);
+        expect(fn () => \Misseye\handleApi('GET', '/api/config', [], [], '', $config, '127.0.0.1'), 503);
+        check($sql->targetStatus() === 'schema_missing');
         $sql = resetDatabase();
         check($sql->targetStatus() === 'uninitialized');
-        $sql->initializeEmptyIfNeeded();
+        expect(fn () => $sql->assertReady(), 503);
+        expect(fn () => \Misseye\handleApi('GET', '/api/config', [], [], '', $config, '127.0.0.1'), 503);
+        check($sql->targetStatus() === 'uninitialized');
+        $sql->initialize(['version' => 1, 'bookings' => []]);
         check($sql->targetStatus() === 'initialized');
         check($sql->read(static fn ($data) => $data['bookings']) === []);
         $store = new BookingStore($sql);
         $booking = $store->reserve(input(), false, $now)['booking'];
-        $sql->initializeEmptyIfNeeded();
+        $sql->assertReady();
         check($store->get($booking['id']) === $booking);
     });
 
@@ -150,7 +160,7 @@ try {
         check($sql->targetStatus() === 'initialized');
         expect(fn () => $sql->importDocument(['version' => 1, 'bookings' => []]));
         $engines = $pdo->query("SELECT ENGINE FROM information_schema.tables WHERE table_schema=DATABASE()")->fetchAll(PDO::FETCH_COLUMN);
-        check(count($engines) === 4 && array_unique($engines) === ['InnoDB']);
+        check(count($engines) === 6 && array_unique($engines) === ['InnoDB']);
     });
 
     run('incompatible schema or storage configuration fails explicitly', function () use ($pdo, $config, $temporary): void {
@@ -259,6 +269,9 @@ try {
             check(copy($root . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . $file,
                 $fixture . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . $file));
         }
+        check(mkdir($fixture . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'migrations', 0700));
+        check(copy(\Misseye\mysqlMigrationFiles()[2],
+            $fixture . DIRECTORY_SEPARATOR . 'scripts' . DIRECTORY_SEPARATOR . 'migrations' . DIRECTORY_SEPARATOR . '002-scoped-calendars.sql'));
         check(cli(['--dry-run'], $fixture)[0] === 2);
         check(cli(['--dry-run', '--empty'], $fixture)[0] === 0);
         check($sql->targetStatus() === 'uninitialized');
@@ -368,7 +381,7 @@ try {
         $pdo->exec('UPDATE misseye_bookings SET starts = starts - 1');
         $pdo->exec('DROP TABLE misseye_blocks');
         expect(fn () => $sql->targetStatus());
-        expect(fn () => $store->catalog(), 503);
+        expect(fn () => $store->availability('2026-10-30', 'smp', $now), 503);
     });
 
     run('rate limits use MySQL with exact concurrent threshold and expiry', function () use ($pdo): void {
@@ -501,6 +514,7 @@ try {
             proc_close($process);
         }
     });
+    require __DIR__ . DIRECTORY_SEPARATOR . 'mysql-foundation.php';
 } finally {
     $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($temporary, FilesystemIterator::SKIP_DOTS),
         RecursiveIteratorIterator::CHILD_FIRST);

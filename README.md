@@ -3,8 +3,9 @@
 System działa na **PHP 8.4+ (64-bit), PDO MySQL i MySQL 8.4+ / InnoDB**.
 Nie wymaga Node.js, SQLite ani Composera do działania na hostingu.
 MySQL jest magazynem rezerwacji, blokad, oferty i limitów żądań.
-Przy pierwszym żądaniu aplikacja tworzy schemat oraz pusty kalendarz,
-ale tylko w pustej bazie; istniejących danych nie nadpisuje.
+Schemat MySQL ma obecnie **wersję 2**. Inicjalizacja i aktualizacje są
+wyłącznie jawne, przez CLI. Żądania WWW nie tworzą tabel ani pustego kalendarza.
+**Przed wdrożeniem na istniejącej bazie v1 wykonaj opisaną niżej migrację.**
 Opcjonalna automatyczna wysyłka WhatsApp wymaga rozszerzenia PHP cURL
 oraz skonfigurowanego konta Meta Cloud API.
 
@@ -39,7 +40,7 @@ miejsce wizyty potwierdza manager. Czas Europe/Warsaw, horyzont 90 dni.
   w osobnych polach; zaokrąglony czas zajęcia kalendarza pokazuje rezerwacja.
 - Usługi tej samej osoby blokują jej wspólny kalendarz. Różne osoby mogą
   przyjmować o tej samej godzinie. Sprawdzenie i zapis nadal są jedną
-  transakcją pod blokadą pliku.
+  transakcją pod blokadą wiersza odpowiedniej specjalistki w InnoDB.
 - Manager korzysta ze wspólnego panelu z filtrem specjalisty oraz jednego
   numeru telefonu i WhatsApp: **+48 665 638 033**, widocznego także na obu
   kartach specjalistek. Wspólny obszar nie oznacza wspólnego grafiku:
@@ -170,7 +171,8 @@ zwraca również `reserved_minutes`. Przekładanie zachowuje oba utrwalone czasy
 Starsze wpisy bez `reserved_minutes` zachowują dotychczasowe końce do
 wykonania kontrolowanej migracji poniżej. Blokady i wizyty są w osobnych
 tabelach InnoDB, ale ich zmiany odbywają się **w jednej transakcji**
-pod wspólną blokadą kalendarza. Nie kasuj ani nie inicjalizuj ponownie
+pod wspólną blokadą kalendarza **danej specjalistki**, nie całej platformy.
+Nie kasuj ani nie inicjalizuj ponownie
 istniejących rezerwacji.
 Po zapisaniu nowych zabiegów lub blokad nie wracaj do starego kodu,
 który nie rozumie tych wpisów. Przed aktualizacją zrób kopię danych.
@@ -265,7 +267,8 @@ Atomowe zajęcie zgłoszenia zapobiega duplikatom przy równoległych zadaniach.
 `accepted` oznacza przyjęcie przez serwer poczty, **nie doręczenie**.
 `failed` i `unknown` są jawne w panelu i logach; nie ponawiamy ich
 automatycznie. Przerwane `sending` po ponad 5 minutach przechodzi
-przy następnym zadaniu lub żądaniu API na `unknown`. Kod wyjścia zadania: 0 — brak błędów,
+przy następnym zadaniu poczty lub `scripts/maintain.php` na `unknown`.
+API nie wykonuje już napraw stanów wysyłki. Kod wyjścia zadania: 0 — brak błędów,
 1 — wyłączona konfiguracja, 2 — odrzucenie lub nieznany wynik.
 
 Przełożenie resetuje przypomnienie dla nowego startu, a anulowana wizyta
@@ -300,16 +303,37 @@ nie przypomnienia. Rezerwacje nadal nie blokują Booksy ani Google Calendar.
 
 ## Struktura
 
+### Interfejs publiczny i panel
+
+`www/site.css` odpowiada za wygląd strony publicznej, a `www/booking.css`
+za wspólne kolory, formularz, cennik i panel managera. `www/site.js` obsługuje
+rozwijane menu mobilne (także klawisz Escape). Cennik ma własną sekcję;
+wybranie usługi prowadzi do jej kalendarza. Formularz pokazuje trzy etapy
+oraz przycisk ponownego wczytania po błędzie połączenia. Nie zmieniono zasad
+rezerwacji, cen ani zgód. Na komputerze PitSTOP jest po lewej, MissEye
+po prawej; na małych ekranach profile układają się pionowo, a galerie
+można przewijać poziomo. Materiał AI pozostaje oznaczony i poza portfolio.
+Przy wdrożeniu prześlij także nowe pliki `site.css` i `site.js`.
+
 ```text
-app/                    prywatny kod PHP
+app/booking.php         reguły rezerwacji i walidacja; bez SQL
+app/calendar-query.php  jawne zakresy odczytu/zapisu kalendarza
+app/mysql.php           zapytania indeksowane i transakcje InnoDB
+app/mysql-schema.php    migracje, wersje i kontrola sum plików SQL
+app/http.php            API; jedno połączenie MySQL na żądanie
+app/email.php           transport poczty i przetwarzanie przypomnień
 config.example.php      wzór konfiguracji, bez sekretów
 config.php              prywatna konfiguracja; ignorowana przez Git
-data/                  prywatne kopie/źródła starszych instalacji; ignorowane przez Git
+data/                   prywatne kopie/źródła starszych instalacji; ignorowane przez Git
 www/                    JEDYNY katalog publiczny
-scripts/mysql-schema.sql schemat InnoDB, bez danych klientów i sekretów
-scripts/migrate-mysql.php narzędzie wyłącznie dla instalacji ze starszymi danymi
+scripts/mysql-schema.sql niezmienna migracja bazowa v1
+scripts/migrations/     kolejne, wersjonowane migracje SQL
+scripts/upgrade-mysql.php aktualizacja schematu istniejącej bazy MySQL
+scripts/migrate-mysql.php import JSON lub jawna nowa instalacja --empty
+scripts/maintain.php     wymagane zadanie konserwacyjne, także przy wyłączonej wysyłce
 scripts/notify.php      opcjonalne zadanie CLI/cron WhatsApp
 scripts/send-reminders.php prywatne zadanie CLI/cron przypomnień e-mail
+tests/mysql-foundation.php migracje, niezależne blokady i ograniczone odczyty dużej historii
 templates/              historyczny wzór JSON (nie inicjalizuje MySQL)
 ```
 
@@ -321,8 +345,9 @@ Nie publikuj całego repozytorium jako katalogu WWW.
 Potrzebne są PHP z `pdo_mysql` i osobna lokalna baza MySQL 8.4.
 Nie używaj produkcyjnej bazy OVH do lokalnych testów.
 Uruchom `php setup.php --origin=http://127.0.0.1:3000` i uzupełnij prywatnie
-dane lokalnej bazy w utworzonej konfiguracji. Setup tworzy pusty kalendarz,
-jeśli baza aplikacji jest pusta. Następnie uruchom:
+dane lokalnej bazy w utworzonej konfiguracji. Następnie wykonaj właściwą
+procedurę poniżej: aktualizację istniejącego SQL, import danych lub jawną
+inicjalizację nowej instalacji. Dopiero po niej uruchom:
 
 ```powershell
 .\start.cmd
@@ -336,9 +361,10 @@ Skrypt uruchamia konfigurację CLI, a następnie serwer testowy:
 Klucz panelu to `admin_token` w prywatnym `config.php`. Skrypt generuje
 go losowo przy pierwszym utworzeniu konfiguracji. Istniejącego `config.php`
 nie nadpisuje i nie importuje automatycznie dawnego `.env`.
-Setup sprawdza połączenie i stan bazy. Po uzupełnieniu konfiguracji
-nie potrzeba dostępu do terminala hostingu: pierwsze żądanie WWW utworzy
-schemat i pusty kalendarz, o ile baza nie zawiera już danych.
+Setup sprawdza połączenie, wersję schematu i integralność danych.
+Nie zmienia schematu ani danych. Brak inicjalizacji kończy się kodem 1,
+błąd konfiguracji/wersji/danych kodem 2. Błędny adres pustej bazy
+nie uruchomi niezauważalnie nowego kalendarza.
 Aktualne ustawienia edytuj w `config.php`, nie w dawnym `.env`.
 Po zmianie konfiguracji odśwież formularz; PHP odczytuje ją przy każdym żądaniu.
 
@@ -374,10 +400,11 @@ certyfikatu dla Twojej domeny.
    na prywatną ścieżkę do zaufanego CA. Weryfikacja certyfikatu pozostaje
    włączona; nie ustawiaj niebezpiecznego obejścia. Puste `ssl_ca`
    nie wymusza TLS — sprawdź wymagania połączenia wewnętrznego OVH.
-4. Przy pierwszej instalacji upewnij się, że wskazana baza jest właściwa
-  i pusta. Pierwsze żądanie do `/api/config` utworzy schemat oraz pusty
-  kalendarz. Nie uruchamiaj go na bazie z istniejącymi danymi aplikacji.
-  Przy aktualizacji zachowaj bazę, konfigurację i pliki danych.
+4. Wstrzymaj zapisy WWW i wszystkie stare zadania cron, wykonaj i sprawdź
+   backup bazy. Uruchom odpowiednią procedurę CLI opisaną niżej.
+   Przy aktualizacji zachowaj bazę, konfigurację i pliki danych.
+   Skonfiguruj konserwację `scripts/maintain.php` co minutę, zanim ponownie
+   udostępnisz rezerwacje. Nie udostępniaj migratorów pod publicznym URL.
    Zalecane prawa prywatnych katalogów to `700`, plików `600` przy zgodnym
    właścicielu procesu PHP. Nie używaj `777`. Bieżące rezerwacje i limity
    HTTP nie wymagają zapisu JSON, tylko transakcji w bazie.
@@ -396,23 +423,88 @@ do katalogu publicznego. Nie potrzeba procesu Node.js.
 Przy aktualizacjach **nie nadpisuj `config.php` i żadnych plików `data`**.
 Paczka nie zawiera prywatnej konfiguracji ani rzeczywistych rezerwacji.
 
-## Nowa, pusta baza MySQL
+## Aktualizacja istniejącej bazy MySQL v1 do v2
 
-Nie potrzeba SSH, Crona ani migratora. Po wgraniu plików i uzupełnieniu
-prywatnego `config.php`, otwórz `https://okonabeauty.pl/api/config`.
-Pierwsze żądanie utworzy tabele i pusty kalendarz, jeśli baza aplikacji
-jest pusta lub zawiera wyłącznie pusty schemat. Inicjalizacja odmawia
-działania, jeśli wykryje niekompletny schemat albo istniejące rekordy.
-Użytkownik MySQL musi mieć uprawnienia do tworzenia tabel. Nie używaj
-tej procedury, jeśli trzeba zachować wizyty ze starszej instalacji.
+Zachowaj kopię kodu, prywatnej konfiguracji oraz zweryfikowany backup MySQL.
+W oknie serwisowym zatrzymaj stare API i zadania cron. Następnie,
+z katalogu aplikacji, przez SSH lub prywatne zadanie CLI hostingu:
+
+```sh
+php scripts/upgrade-mysql.php --dry-run
+php scripts/upgrade-mysql.php --apply
+php setup.php
+php scripts/maintain.php
+```
+
+`--dry-run` pokazuje wersję i oczekujące migracje bez DDL i bez zmian danych.
+`--apply` zachowuje identyfikatory, snapshoty, kolejność i historyczne ceny
+oraz miejsca. Dodaje indeksy, generowane kolumny kolejek, osobne wiersze
+blokad kalendarzy i dziennik migracji z sumami SHA-256. Dwa migratory nie
+mogą pracować równolegle. Powtórzenie zakończonej migracji niczego nie resetuje.
+Plików zastosowanych migracji **nie edytuj** — następna zmiana wymaga
+nowej wersji. Różnice końców linii Windows/Linux nie zmieniają sumy migracji.
+
+DDL MySQL nie jest transakcyjne. Przerwanie pozostawia oznaczenie `applying`;
+kolejna próba odmawia dalszych zmian. Pozostaw aplikację offline, sprawdź
+zastosowane DDL i odtwórz backup lub zleć operatorowi kontrolowaną naprawę.
+Nie usuwaj oznaczenia tylko po to, aby ominąć błąd. Kod v2 odrzuca schemat v1.
+Rollback wymaga zgodnej pary kod+baza; nie cofaj samego kodu po nowych zapisach.
+
+Do migracji potrzebne są prawa CREATE/ALTER/INDEX oraz SELECT/INSERT/
+UPDATE/DELETE. Proces WWW po migracji potrzebuje tylko DML, nie praw DDL.
+Samo ręczne wgranie `mysql-schema.sql` nie instaluje wersji 2.
+Przy braku SSH użyj prywatnego CLI/harmonogramu OVH lub pomocy operatora.
+
+### Nowa instalacja lub import ze starszego JSON
+
+`upgrade-mysql.php` aktualizuje tylko schemat, nigdy nie zakłada pustego
+kalendarza. Dla źródła JSON użyj:
+
+```sh
+php scripts/migrate-mysql.php --dry-run --source=/prywatna/sciezka/bookings.json
+php scripts/migrate-mysql.php --apply --source=/prywatna/sciezka/bookings.json
+```
+
+Domyślne źródło to `data/bookings.json`. Import waliduje całość, nie zmienia
+źródła i odmawia nadpisania już zainicjalizowanego MySQL. Zatrzymaj stary
+backend również po migracji. Jeśli istnieje SQLite, najpierw użyj
+historycznego `scripts/migrate-sqlite.mjs` do prywatnego eksportu JSON.
+
+Wyłącznie po potwierdzeniu, że nie istnieją żadne wcześniejsze rezerwacje:
+
+```sh
+php scripts/migrate-mysql.php --dry-run --empty
+php scripts/migrate-mysql.php --apply --empty
+```
+
+Brakujący/uszkodzony JSON nie powoduje pustej inicjalizacji. `--empty`
+odmawia działania przy wykrytych domyślnych plikach JSON/SQLite lub dawnym
+`data_file`. Nie szuka jednak dowolnych plików na całym koncie — tę kontrolę
+wykonuje operator. Nigdy nie usuwaj źródeł, aby ominąć tę kontrolę.
+
+### Konserwacja poza żądaniami klientów
+
+Uruchamiaj prywatnie `php scripts/maintain.php` **co minutę**, niezależnie
+od tego, czy wysyłka jest włączona. Zadanie oznacza przerwane wysyłki jako
+`unknown`, wygasza oczekujące WhatsApp po wyłączeniu integracji i usuwa
+przeterminowane liczniki. Nie wysyła wiadomości, nie zmienia terminu wizyt
+i nie ponawia niepewnych wysyłek. Zwraca liczniki bez danych klientów
+oraz kod 2 przy błędzie. Monitoruj kod wyjścia i czas ostatniego sukcesu.
+
+To zadanie nie zastępuje `send-reminders.php` ani `notify.php`.
+Bez działającego zadania status `sending` może nadal blokować edycję;
+odświeżanie publicznego API już go nie naprawia.
 
 ## Jak działa zapis MySQL
 
 - `misseye_bookings`: osobny wiersz dla każdej wizyty, unikalny `request_id`,
   indeks specjalistki/statusu/przedziału czasu.
 - `misseye_blocks`: osobny wiersz dla każdej przerwy lub nieobecności.
-- `misseye_state`: wersja schematu, oferta i metadane oraz wiersze blokad.
+- `misseye_state`: wersja schematu, oferta, współdzielona blokada konfiguracji
+  oraz osobny wiersz kontroli przyjmowania nowych klientów limitera.
+- `misseye_calendars`: osobny wiersz blokady dla każdej specjalistki.
 - `misseye_rates`: liczniki żądań z HMAC adresu IP i terminem wygaśnięcia.
+- `misseye_migrations`: wersje, sumy plików i stan wykonania migracji.
 
 Nie ma jednego pliku ani jednego pola zawierającego całą listę rezerwacji.
 Wiersze wizyt/blokad zachowują dodatkowo pełny snapshot w polu `payload`
@@ -423,18 +515,54 @@ To magazyn SQL z indeksowanymi kolumnami i snapshotami, nie pełna
 normalizacja wszystkich pól do odrębnych tabel.
 
 PDO używa parametrów, `utf8mb4`, wyjątków i natywnych prepared statements.
-Wszystkie tabele wymagają InnoDB. Odczyty mają spójny snapshot transakcji;
-mutacje najpierw blokują wspólny wiersz kalendarza `SELECT ... FOR UPDATE`,
-potem sprawdzają kolizje i zapisują zmiany. Chroni to także przed wyścigiem
-wizyty z blokadą, ceną, przełożeniem lub zadaniem przypomnień.
+Wszystkie tabele wymagają InnoDB. API otwiera jedno połączenie na żądanie.
+Odczyty kalendarza mają spójny snapshot i nie zakładają blokad zapisu.
+Mutacja bierze `FOR SHARE` na ustawieniach, a następnie `FOR UPDATE`
+na wierszu właściwej specjalistki, **przed** odczytem dostępności.
+Różne kalendarze zapisują się niezależnie. Zmiana wspólnej oferty lub
+administracyjny import/eksport z modyfikacją używa blokady wyłącznej
+ustawień, aby nie dopuścić do rezerwacji według zmieniających się zasad.
+Atomowe zajmowanie powiadomień używa tej samej blokady co edycja wizyty.
 Zmieniane są tylko zmodyfikowane wiersze. Błąd powoduje rollback,
 timeout blokady jawny błąd 503, a ponowienie używa tego samego requestId.
 Unikalny indeks dodatkowo chroni przed duplikatem zgłoszenia.
 
-Adapter zachowuje dotychczasową logikę, która odczytuje stan kalendarza
-do pamięci. Globalna blokada jest świadomym wyborem dla obecnego salonu,
-nie deklaracją gotowości na ogólnopolski ruch. Kolejny etap skalowania
-to zapytania zakresowe i blokady per specjalistka, po testach obciążenia.
+`CalendarQuery` określa zakres danych przed wywołaniem reguł biznesowych:
+katalog czyta wyłącznie metadane, pojedyncza wizyta używa klucza głównego,
+ponowienie zgłoszenia unikalnego `request_id`, a dostępność indeksów
+specjalistki/statusu/przedziału czasu. Menedżerski dzień/tydzień pobiera
+tylko potrzebny zakres. Zakres wizyt ma dolną granicę wynikającą z
+walidowanego maksimum 12 godzin; wielodniowe blokady używają także indeksu
+po końcu, aby widzieć urlop rozpoczęty przed wybranym dniem.
+Generowane kolumny stanów wysyłki pozwalają indeksować kolejki bez
+przepisywania snapshotów. Nie ma `recover*` ani `information_schema` w API.
+Pełny odczyt pozostaje tylko w jawnych narzędziach importu, weryfikacji
+integralności i migracji zaokrąglania — nie w zwykłych żądaniach.
+
+Limiter zachowuje **120 żądań na minutę/adres** i **2000 aktywnych adresów**.
+Aktywny klient aktualizuje tylko swój licznik. Nowe/wygasłe liczniki
+przechodzą przez wspólną kontrolę przyjęcia, aby zachować dokładny limit.
+To nadal świadome ograniczenie pilotażu, nie nieograniczona ochrona
+marketplace. Przed większą kampanią trzeba ustalić nowe limity i przenieść
+ochronę ruchu do warstwy brzegowej/Redis; nie zmieniono ich po cichu.
+
+### Co nadal nie jest gotowym marketplace
+
+Katalog nadal zawiera dwie osoby i 16 pozycji rezerwacyjnych w czterech
+kategoriach, jeden wspólny panel i klucz. Nie ma izolacji kont partnerów,
+wyszukiwarki profili, opinii, płatności ani sklepu. Nie udostępniaj obecnego
+klucza zewnętrznym specjalistom. Kolejne etapy to konta i role, model
+organizacji/specjalistów/usług/lokalizacji w SQL oraz filtrowanie wszystkich
+odczytów i zapisów według uprawnień, a dopiero później katalog publiczny,
+opinie i osobny moduł zamówień/płatności z idempotentnymi webhookami.
+Nie potrzeba do tego od razu mikroserwisów.
+
+Pozostałe ograniczenia: wspólne ustawienia oferty, inline WhatsApp
+(maks. 10 sekund), zakresowy panel bez paginacji dla tysięcy osób,
+media na hostingu i brak niezależnych workerów/kolejki. Skalę docelową
+trzeba potwierdzić testami ruchu na wybranym hostingu, pomiarem p95,
+błędów, czasu blokad, pamięci i liczby połączeń; test lokalny nie dowodzi
+gotowości na ruch ogólnopolski.
 
 Po migracji testuj backup MySQL i jego odtwarzanie. Nie cofaj do starego
 JSON, jeżeli MySQL przyjął już nowe wizyty — stary plik będzie nieaktualny.
@@ -480,7 +608,7 @@ wiadomości. Potwierdzenie jest wysyłane podczas żądania rezerwacji
 Opcjonalny cron OVH może uruchamiać prywatny `scripts/notify.php`,
 aby obsłużyć zgłoszenia pozostawione jako `pending` przez przerwane
 żądanie. Po ponad dwóch minutach status przerwanej wysyłki `sending`
-zmienia się na `unknown` przy kolejnym żądaniu API/cron. Takich wiadomości
+zmienia się na `unknown` przy kolejnym zadaniu `notify.php` lub `maintain.php`. Takich wiadomości
 nie ponawia się automatycznie, żeby uniknąć duplikatów. Sprawdź je w Meta
 i skontaktuj się z klientem ręcznie. Błędy są widoczne w panelu i logach PHP.
 
@@ -504,7 +632,7 @@ anulowania. Używają fikcyjnych danych i atrap Meta, bez wysyłki wiadomości.
 Testy MySQL wymagają **rzeczywistego lokalnego MySQL 8.4** oraz prywatnej
 konfiguracji jak `config.example.php`, ale z hostem `127.0.0.1`, osobną
 bazą o nazwie `misseye_test_*` i użytkownikiem mającym prawa do tabel
-oraz testowego triggera. **Testy kasują cztery tabele aplikacji w tej
+oraz testowego triggera. **Testy kasują sześć tabel aplikacji w tej
 bazie**; nie uruchamiaj ich na danych salonu. Test odmawia połączenia
 z hostem innym niż loopback lub bazą bez prefiksu testowego.
 
@@ -519,6 +647,12 @@ Pakiet sprawdza realne transakcje, konkurencyjne procesy PHP, identyczne
 zgłoszenia, blokady, przełożenia, wersjonowanie ofert, pojedyncze zajęcie
 powiadomień, migrację z zachowaniem źródła, indeks unikalny, awarie SQL
 i rollback po częściowym wykonaniu, timeout oraz limit 120 żądań/minutę.
+Dołącza `tests/mysql-foundation.php`: migracja v1→v2, odmowa startu na
+pustej/starej bazie, sumy migracji, niezależność blokad, zgodność zakresów
+i DST, jedno połączenie API, konserwacja CLI, limit 2000 adresów i
+12 000 historycznych wizyt oraz 12 000 blokad. Test sprawdza progi liczby odczytów silnika
+(`Handler_read*`), nie tylko czas zależny od komputera. To test skalowania
+z historią, nie deklaracja określonej przepustowości produkcyjnej.
 Brak MySQL/PDO jest błędem testu, nie pomijanym sprawdzeniem.
 
 ## Galeria filmów

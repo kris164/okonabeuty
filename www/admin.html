@@ -15,8 +15,12 @@
       <symbol id="mark-eye" viewBox="0 0 64 48"><path d="M5 25Q32 1 59 25Q32 47 5 25Z M12 14L9 8 M32 8V2 M52 14L55 8"/><circle cx="32" cy="25" r="8"/></symbol>
     </defs>
   </svg>
-  <a href="/">← Strona główna</a>
-  <h1>PitSTOP × MissEye — panel managera</h1>
+  <header class="admin-header">
+    <a href="/">← Strona główna</a>
+    <p class="admin-eyebrow">PitSTOP × MissEye</p>
+    <h1>Twój dzień, pod kontrolą.</h1>
+    <p class="admin-subtitle">Panel managera · dwa kalendarze, jedna przestrzeń pracy.</p>
+  </header>
   <div class="brand-legend" aria-label="Specjalistki i oznaczenia kalendarzy">
     <div class="pitstop-1"><svg class="brand-mark" aria-hidden="true"><use href="#mark-nail"/></svg><span><strong>PitSTOP</strong><small>Nails art / podologia · szałwiowa zieleń</small></span></div>
     <div class="misseye-1"><svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg><span><strong>MissEye</strong><small>SMP / makijaż permanentny · ciepła miedź</small></span></div>
@@ -39,8 +43,11 @@
       <button id="admin-refresh" type="button">Odśwież</button>
       <button id="admin-logout" type="button">Wyloguj</button>
     </div>
-    <p>Dwa niezależne kalendarze, jeden manager. Konsultacja trwa 30 min i zajmuje 60 min w kalendarzu. Czas każdego zabiegu zaokrąglamy w górę do pełnych godzin, np. 90 → 120 min, 220 → 240 min. Zaokrąglamy czas trwania, nie godzinę zakończenia. Godziny w strefie Europe/Warsaw. Miejsce PitSTOP ustal z klientem osobno. Przekładanie i anulowanie nie wysyła nowej wiadomości — poinformuj klienta.</p>
-    <p>„Przyjęte przez WhatsApp” nie oznacza doręczenia. Status nieznany wymaga sprawdzenia w Meta; system nie ponawia wiadomości automatycznie.</p>
+    <details class="admin-help">
+      <summary>Zasady kalendarza i powiadomień</summary>
+      <p>Dwa niezależne kalendarze, jeden manager. Konsultacja trwa 30 min i zajmuje 60 min w kalendarzu. Czas każdego zabiegu zaokrąglamy w górę do pełnych godzin, np. 90 → 120 min, 220 → 240 min. Zaokrąglamy czas trwania, nie godzinę zakończenia. Godziny w strefie Europe/Warsaw. Miejsce PitSTOP ustal z klientem osobno. Przekładanie i anulowanie nie wysyła nowej wiadomości — poinformuj klienta.</p>
+      <p>„Przyjęte przez WhatsApp” nie oznacza doręczenia. Status nieznany wymaga sprawdzenia w Meta; system nie ponawia wiadomości automatycznie.</p>
+    </details>
     <div class="manager-tools">
       <details>
         <summary>+ Dodaj wizytę ręcznie</summary>

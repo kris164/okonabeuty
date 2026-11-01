@@ -60,10 +60,10 @@ function loadConfig(?string $file = null): array
     return $config;
 }
 
-function bookingStore(array $config): BookingStore
+function bookingStore(array $config, ?\PDO $pdo = null): BookingStore
 {
     return new BookingStore($config['storage'] === 'mysql'
-        ? new MysqlStore(connectMysql($config['database'])) : $config['data_file']);
+        ? new MysqlStore($pdo ?? connectMysql($config['database'])) : $config['data_file']);
 }
 
 function securityHeaders(): void
@@ -75,11 +75,11 @@ function securityHeaders(): void
     header("Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
 }
 
-function rateLimit(array $config, string $address): void
+function rateLimit(array $config, string $address, ?\PDO $pdo = null): void
 {
     if ($config['storage'] === 'mysql') {
-        $pdo = connectMysql($config['database']);
-        (new MysqlStore($pdo))->initializeEmptyIfNeeded();
+        $pdo ??= connectMysql($config['database']);
+        (new MysqlStore($pdo))->assertReady();
         mysqlRateLimit($pdo, hash_hmac('sha256', $address, $config['admin_token']));
         return;
     }
@@ -125,7 +125,8 @@ function handleApi(
     if ($method === 'POST' && isset($headers['origin']) && $headers['origin'] !== $config['origin']) {
         throw new HttpError(403, 'Niedozwolone źródło żądania.');
     }
-    rateLimit($config, $address);
+    $pdo = $config['storage'] === 'mysql' ? connectMysql($config['database']) : null;
+    rateLimit($config, $address, $pdo);
     if (str_starts_with($path, '/api/admin/')) {
         $authorization = $headers['authorization'] ?? '';
         if (!str_starts_with($authorization, 'Bearer ')
@@ -133,9 +134,7 @@ function handleApi(
             throw new HttpError(401, 'Nieprawidłowy klucz panelu.');
         }
     }
-    $store = bookingStore($config);
-    $store->recoverNotifications($config['whatsapp'] !== null);
-    $store->recoverEmailReminders(new DateTimeImmutable());
+    $store = bookingStore($config, $pdo);
     if ($method === 'GET' && $path === '/api/config') {
         $now = new DateTimeImmutable();
         return [200, [

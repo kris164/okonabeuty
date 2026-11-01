@@ -360,6 +360,16 @@ final class BookingStore
         $this->file = is_string($storage) ? new JsonFile($storage, validateBookings(...)) : $storage;
     }
 
+    private function read(CalendarQuery $query, callable $operation): mixed
+    {
+        return $this->file instanceof MysqlStore ? $this->file->read($operation, $query) : $this->file->read($operation);
+    }
+
+    private function write(CalendarQuery $query, callable $operation): mixed
+    {
+        return $this->file instanceof MysqlStore ? $this->file->write($operation, $query) : $this->file->write($operation);
+    }
+
     public function initialize(): void
     {
         $this->file->initialize(['version' => 1, 'bookings' => []]);
@@ -377,7 +387,7 @@ final class BookingStore
 
     public function catalog(): array
     {
-        return $this->file->read(offerCatalog(...));
+        return $this->read(CalendarQuery::catalog(), offerCatalog(...));
     }
 
     public function saveOffer(mixed $input, ?DateTimeImmutable $now = null): array
@@ -388,7 +398,7 @@ final class BookingStore
             throw new HttpError(400, 'Nieprawidłowa oferta: sprawdź ceny, dni i adresy.');
         }
         $now ??= new DateTimeImmutable();
-        return $this->file->write(static function (array &$data) use ($input, $now): array {
+        return $this->write(CalendarQuery::offer(milliseconds($now)), static function (array &$data) use ($input, $now): array {
             $current = $data['offer'] ?? defaultOffer();
             $same = $input['prices'] === $current['prices'] && $input['week'] === $current['week']
                 && $input['addresses'] === $current['addresses'];
@@ -443,12 +453,12 @@ final class BookingStore
     public function availability(mixed $date, mixed $service, ?DateTimeImmutable $now = null): array
     {
         $now ??= new DateTimeImmutable();
-        return $this->file->read(fn ($data) => $this->available($data, $date, $service, $now));
+        return $this->read(CalendarQuery::day($date, $service), fn ($data) => $this->available($data, $date, $service, $now));
     }
 
     public function availabilityInfo(mixed $date, mixed $service): array
     {
-        return $this->file->read(function ($data) use ($date, $service): array {
+        return $this->read(CalendarQuery::day($date, $service), function ($data) use ($date, $service): array {
             $slots = $this->available($data, $date, $service, new DateTimeImmutable());
             $offer = $data['offer'] ?? defaultOffer();
             return [
@@ -463,7 +473,7 @@ final class BookingStore
     {
         $request = normalize($input);
         $now ??= new DateTimeImmutable();
-        return $this->file->write(function (array &$data) use ($request, $automated, $now, $emailEnabled): array {
+        return $this->write(CalendarQuery::reservation($request), function (array &$data) use ($request, $automated, $now, $emailEnabled): array {
             foreach ($data['bookings'] as $previous) {
                 if ($previous['request_id'] !== $request['requestId']) {
                     continue;
@@ -583,7 +593,9 @@ final class BookingStore
     {
         $now ??= new DateTimeImmutable();
         schedule($date, serviceFor($service), $now);
-        return $this->file->read(function ($data) use ($date, $service, $now): array {
+        $day = parseDate($date);
+        $query = CalendarQuery::range(milliseconds($day), milliseconds($day->modify('+7 days')), serviceFor($service)['specialistId']);
+        return $this->read($query, function ($data) use ($date, $service, $now): array {
             $days = [];
             $day = parseDate($date);
             for ($i = 0; $i < 7 && $day->format('Y-m-d') <= lastDate($now); $i++, $day = $day->modify('+1 day')) {
@@ -599,7 +611,9 @@ final class BookingStore
     {
         $now ??= new DateTimeImmutable();
         schedule($date, serviceFor($service), $now);
-        return $this->file->read(function ($data) use ($date, $service, $now): ?array {
+        $query = CalendarQuery::range(milliseconds(parseDate($date)),
+            milliseconds(parseDate(lastDate($now))->modify('+1 day')), serviceFor($service)['specialistId']);
+        return $this->read($query, function ($data) use ($date, $service, $now): ?array {
             for ($day = parseDate($date); $day->format('Y-m-d') <= lastDate($now); $day = $day->modify('+1 day')) {
                 $value = $day->format('Y-m-d');
                 $times = $this->available($data, $value, $service, $now);
@@ -620,7 +634,7 @@ final class BookingStore
         }
         $start = milliseconds($startDay);
         $finish = milliseconds($endDay->modify('+1 day'));
-        return $this->file->read(static function ($data) use ($date, $end, $start, $finish): array {
+        return $this->read(CalendarQuery::range($start, $finish, activeOnly: false), static function ($data) use ($date, $end, $start, $finish): array {
             return [
                 'bookings' => array_values(array_map(static fn ($b) => [
                     ...$b, 'minutes' => bookingMinutes($b), 'revision' => $b['revision'] ?? 0,
@@ -644,7 +658,7 @@ final class BookingStore
         }
         parseDate($input['date']);
         instant($input['date'], $input['time']);
-        return $this->file->write(function (array &$data) use ($id, $input, $now): array {
+        return $this->write(CalendarQuery::booking($id, $input['date']), function (array &$data) use ($id, $input, $now): array {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] !== $id) {
                     continue;
@@ -713,7 +727,7 @@ final class BookingStore
             'reason' => $input['reason'], 'date' => $input['date'], 'time' => $input['time'],
             'end_date' => $input['endDate'], 'end_time' => $input['endTime'], 'starts' => $start, 'ends' => $end,
         ];
-        return $this->file->write(static function (array &$data) use ($block): array {
+        return $this->write(CalendarQuery::block($block['id'], $block), static function (array &$data) use ($block): array {
             foreach ($data['blocks'] ?? [] as $previous) {
                 if ($previous['id'] === $block['id']) {
                     if ($previous !== $block) {
@@ -736,7 +750,7 @@ final class BookingStore
 
     public function cancelBlock(string $id): array
     {
-        return $this->file->write(static function (array &$data) use ($id): array {
+        return $this->write(CalendarQuery::block($id), static function (array &$data) use ($id): array {
             foreach ($data['blocks'] ?? [] as $index => $block) {
                 if ($block['id'] === $id) {
                     $data['blocks'][$index]['status'] = 'cancelled';
@@ -749,7 +763,7 @@ final class BookingStore
 
     public function get(string $id): ?array
     {
-        return $this->file->read(static function ($data) use ($id): ?array {
+        return $this->read(CalendarQuery::booking($id), static function ($data) use ($id): ?array {
             foreach ($data['bookings'] as $booking) {
                 if ($booking['id'] === $id) {
                     return $booking;
@@ -761,8 +775,9 @@ final class BookingStore
 
     public function list(mixed $date): array
     {
-        parseDate($date);
-        return $this->file->read(static function ($data) use ($date): array {
+        $day = parseDate($date);
+        $query = CalendarQuery::range(milliseconds($day), milliseconds($day->modify('+1 day')), activeOnly: false);
+        return $this->read($query, static function ($data) use ($date): array {
             $bookings = array_values(array_filter($data['bookings'], static fn ($b) => $b['date'] === $date));
             usort($bookings, static fn ($a, $b) => [$a['time'], $a['created_at']] <=> [$b['time'], $b['created_at']]);
             return array_map(static fn ($booking) => [...$booking, 'location' => bookingLocation($booking)], $bookings);
@@ -771,7 +786,7 @@ final class BookingStore
 
     public function cancel(string $id): array
     {
-        return $this->file->write(static function (array &$data) use ($id): array {
+        return $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id): array {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id) {
                     if (($booking['email_notification'] ?? '') === 'sending') {
@@ -788,7 +803,7 @@ final class BookingStore
     public function dueEmailReminders(?DateTimeImmutable $now = null): array
     {
         $stamp = milliseconds($now ?? new DateTimeImmutable());
-        return $this->file->read(static fn ($data) => array_values(array_filter(
+        return $this->read(CalendarQuery::notifications('email', 'pending', $stamp, $stamp + 86400000), static fn ($data) => array_values(array_filter(
             $data['bookings'], static fn ($b) => $b['status'] === 'confirmed' && ($b['email_consent'] ?? false)
                 && ($b['email_notification'] ?? '') === 'pending' && $b['starts'] > $stamp && $b['starts'] <= $stamp + 86400000
         )));
@@ -797,7 +812,7 @@ final class BookingStore
     public function claimEmailReminder(string $id, int $starts, DateTimeImmutable $now): ?array
     {
         $stamp = milliseconds($now);
-        return $this->file->write(static function (array &$data) use ($id, $starts, $stamp): ?array {
+        return $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id, $starts, $stamp): ?array {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id && $booking['starts'] === $starts && $booking['status'] === 'confirmed'
                     && ($booking['email_consent'] ?? false) && $booking['email_notification'] === 'pending'
@@ -816,7 +831,7 @@ final class BookingStore
         if (!in_array($status, ['accepted', 'failed', 'unknown'], true)) {
             throw new RuntimeException('Invalid email outcome.');
         }
-        $this->file->write(static function (array &$data) use ($id, $starts, $status): void {
+        $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id, $starts, $status): void {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id && $booking['starts'] === $starts && $booking['email_notification'] === 'sending') {
                     $booking['email_notification'] = $status;
@@ -830,7 +845,7 @@ final class BookingStore
     public function recoverEmailReminders(DateTimeImmutable $now): int
     {
         $stamp = milliseconds($now);
-        return $this->file->write(static function (array &$data) use ($stamp): int {
+        return $this->recover(CalendarQuery::notifications('email', 'sending', until: $stamp - 300000), static function (array &$data) use ($stamp): int {
             $recovered = 0;
             foreach ($data['bookings'] as &$booking) {
                 if (($booking['email_notification'] ?? '') === 'sending' && $booking['email_started_at'] < $stamp - 300000) {
@@ -843,9 +858,22 @@ final class BookingStore
         });
     }
 
+    private function recover(CalendarQuery $query, callable $operation): int
+    {
+        if (!$this->file instanceof MysqlStore) {
+            return $this->file->write($operation);
+        }
+        $ids = $this->read($query, static fn ($data) => array_column($data['bookings'], 'id'));
+        $count = 0;
+        foreach ($ids as $id) {
+            $count += $this->write(CalendarQuery::booking($id), $operation);
+        }
+        return $count;
+    }
+
     public function stopEmailReminder(string $id): array
     {
-        return $this->file->write(static function (array &$data) use ($id): array {
+        return $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id): array {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id) {
                     if (($booking['email_notification'] ?? '') === 'sending') {
@@ -865,29 +893,38 @@ final class BookingStore
 
     public function pending(): array
     {
-        return $this->file->read(static fn ($data) => array_values(array_filter(
+        return $this->read(CalendarQuery::notifications('whatsapp', 'pending'), static fn ($data) => array_values(array_filter(
             $data['bookings'], static fn ($b) => $b['status'] === 'confirmed' && $b['notification'] === 'pending'
         )));
     }
 
-    public function recoverNotifications(bool $configured, ?int $now = null): void
+    public function recoverNotifications(bool $configured, ?int $now = null): int
     {
         $now ??= milliseconds(new DateTimeImmutable());
-        $this->file->write(static function (array &$data) use ($configured, $now): void {
+        $operation = static function (array &$data) use ($configured, $now): int {
+            $count = 0;
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['notification'] === 'sending' && ($booking['notification_started_at'] ?? 0) < $now - 120000) {
                     $booking['notification'] = 'unknown';
+                    $count++;
                 }
                 if (!$configured && $booking['notification'] === 'pending') {
                     $booking['notification'] = 'unconfigured';
+                    $count++;
                 }
             }
-        });
+            return $count;
+        };
+        $count = $this->recover(CalendarQuery::notifications('whatsapp', 'sending', until: $now - 120000), $operation);
+        if (!$configured && $this->file instanceof MysqlStore) {
+            $count += $this->recover(CalendarQuery::notifications('whatsapp', 'pending', activeOnly: false), $operation);
+        }
+        return $count;
     }
 
     public function claimNotification(string $id): ?array
     {
-        return $this->file->write(static function (array &$data) use ($id): ?array {
+        return $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id): ?array {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id && $booking['status'] === 'confirmed'
                     && $booking['whatsapp_consent'] && $booking['notification'] === 'pending') {
@@ -905,7 +942,7 @@ final class BookingStore
         if (!in_array($status, ['accepted', 'failed', 'unknown'], true)) {
             throw new RuntimeException('Invalid notification outcome.');
         }
-        $this->file->write(static function (array &$data) use ($id, $status, $messageId): void {
+        $this->write(CalendarQuery::booking($id), static function (array &$data) use ($id, $status, $messageId): void {
             foreach ($data['bookings'] as &$booking) {
                 if ($booking['id'] === $id) {
                     $booking['notification'] = $status;

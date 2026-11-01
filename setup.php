@@ -40,8 +40,11 @@ try {
     $store = new \Misseye\MysqlStore(\Misseye\connectMysql($config['database']));
     $status = $store->targetStatus();
     echo 'MySQL connection OK; target: ' . $status . ".\n";
-    $store->initializeEmptyIfNeeded();
-    echo "Empty MySQL storage is initialized if it contained no application records.\n";
+    echo "Setup does not change schema or initialize a calendar. Use upgrade-mysql.php for existing SQL; migrate-mysql.php for an explicit import/new installation.\n";
+    if ($status !== 'initialized') {
+        exit(1);
+    }
+    $store->assertReady();
     $store->read(static fn ($data) => null);
 } catch (Throwable $error) {
     fwrite(STDERR, 'Setup failed: ' . $error->getMessage() . "\n");

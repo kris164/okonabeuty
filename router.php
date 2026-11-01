@@ -27,6 +27,8 @@ $files = [
     '/admin.html' => ['admin.html', 'text/html; charset=utf-8'],
     '/booking.js' => ['booking.js', 'text/javascript; charset=utf-8'],
     '/booking.css' => ['booking.css', 'text/css; charset=utf-8'],
+    '/site.css' => ['site.css', 'text/css; charset=utf-8'],
+    '/site.js' => ['site.js', 'text/javascript; charset=utf-8'],
     '/admin.js' => ['admin.js', 'text/javascript; charset=utf-8'],
     '/gallery.js' => ['gallery.js', 'text/javascript; charset=utf-8'],
 ];

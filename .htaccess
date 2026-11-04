@@ -1,0 +1,41 @@
+Options -Indexes
+DirectoryIndex index.html
+
+RewriteEngine On
+
+# 1. Poprawione przekierowanie na HTTPS (brakowało warunku lub był błędny)
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# 2. Reguły API i Admin
+RewriteRule ^api(?:/(.*))?$ index.php [END,QSA]
+RewriteRule ^admin/?$ admin.html [END]
+
+# 3. Blokada dostępu do wrażliwych plików
+<FilesMatch "(?i)\.(json|sqlite|lock|tmpl|ini|log)$">
+    Require all denied
+</FilesMatch>
+
+# 4. Nagłówki bezpieczeństwa i Content-Security-Policy (CSP)
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "no-referrer"
+    Header always set X-Frame-Options "DENY"
+    Header always set Cache-Control "no-store"
+    
+    # Poprawiony nagłówek CSP (usunięto błędne znaki zapytania i cudzysłowy wewnątrz dyrektyw)
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self';"
+</IfModule>
+
+# 5. Poprawione domknięcie znacznika FilesMatch i reguła Cache-Control
+<FilesMatch "(?i)\.(mp4|webp)$">
+    <IfModule mod_headers.c>
+        Header always set Cache-Control "public, max-age=3600"
+    </IfModule>
+</FilesMatch>
+
+# 6. Dodanie typów MIME
+<IfModule mod_mime.c>
+    AddType video/mp4 .mp4
+    AddType image/webp .webp
+</IfModule>

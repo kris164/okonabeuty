@@ -1,0 +1,4 @@
+app.engine=php
+app.engine.version=8.4
+environment=production
+container.image=stable

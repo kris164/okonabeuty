@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MissEye — mikropigmentacja skóry głowy i makijaż permanentny</title>
+<meta name="description" content="MissEye — mikropigmentacja skóry głowy, optyczne zagęszczenie włosów i makijaż permanentny. Umów konsultację we Wrześni lub Poznaniu.">
+<link rel="canonical" href="https://lysina.info/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="booking.css">
+<script src="booking.js" defer></script>
+<script src="gallery.js" defer></script>
+<style>
+  :root{
+    --bg:        #121010;
+    --bg-soft:   #1b1817;
+    --card:      #221e1c;
+    --ink:       #f3ece6;
+    --ink-dim:   #b7aba1;
+    --accent:    #c98a6b;   /* terracotta z logo */
+    --accent-2:  #e8b893;
+    --line:      rgba(201,138,107,.25);
+    --radius:    18px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Jost',sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3{font-family:'Cormorant Garamond',serif;font-weight:500;line-height:1.15}
+  img{max-width:100%;display:block}
+  a{color:inherit;text-decoration:none}
+  .wrap{max-width:1100px;margin:0 auto;padding:0 24px}
+
+  /* ===== nav ===== */
+  header{
+    position:sticky;top:0;z-index:50;
+    background:rgba(18,16,16,.85);
+    backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav{display:flex;align-items:center;justify-content:space-between;height:68px}
+  .logo{font-family:'Cormorant Garamond',serif;font-size:1.5rem;letter-spacing:.35em;color:var(--accent-2)}
+  .logo span{color:var(--ink)}
+  .nav ul{display:flex;gap:28px;list-style:none}
+  .nav ul a{font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);transition:color .2s}
+  .nav ul a:hover{color:var(--accent-2)}
+  .nav .cta{color:var(--accent-2);border:1px solid var(--accent);padding:8px 18px;border-radius:999px}
+  .nav .cta:hover{background:var(--accent);color:#1a1210}
+  @media(max-width:760px){.nav ul li:not(:last-child){display:none}}
+
+  /* ===== hero ===== */
+  .hero{
+    position:relative;overflow:hidden;
+    padding:110px 0 90px;
+    background:
+      radial-gradient(900px 420px at 80% -10%, rgba(201,138,107,.16), transparent 60%),
+      radial-gradient(600px 400px at 0% 110%, rgba(201,138,107,.08), transparent 60%),
+      var(--bg);
+    text-align:center;
+  }
+  .hero .badge{
+    display:inline-block;font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;
+    color:var(--accent-2);border:1px solid var(--line);border-radius:999px;
+    padding:8px 20px;margin-bottom:28px;
+  }
+  .hero h1{font-size:clamp(2.4rem,6vw,4.2rem);max-width:820px;margin:0 auto 20px}
+  .hero h1 em{font-style:italic;color:var(--accent-2)}
+  .hero p{max-width:560px;margin:0 auto 38px;color:var(--ink-dim);font-weight:300;font-size:1.05rem}
+  .btn{
+    display:inline-block;padding:14px 34px;border-radius:999px;
+    font-size:.82rem;letter-spacing:.16em;text-transform:uppercase;font-weight:500;
+    transition:transform .2s, box-shadow .2s;
+  }
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#201311}
+  .btn-ghost{border:1px solid var(--line);color:var(--ink);margin-left:12px}
+  .btn:hover{transform:translateY(-2px);box-shadow:0 12px 30px rgba(201,138,107,.25)}
+  @media(max-width:520px){.btn-ghost{margin:14px 0 0}}
+
+  /* ===== sekcje ===== */
+  section{padding:90px 0}
+  .kicker{font-size:.72rem;letter-spacing:.3em;text-transform:uppercase;color:var(--accent);margin-bottom:14px}
+  .title{font-size:clamp(1.9rem,4vw,2.8rem);margin-bottom:18px}
+  .lead{color:var(--ink-dim);font-weight:300;max-width:640px}
+
+  /* uslugi */
+  .services{background:var(--bg-soft)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:48px}
+  @media(max-width:820px){.grid-2{grid-template-columns:1fr}}
+  .card{
+    background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+    padding:40px 34px;position:relative;overflow:hidden;
+    transition:transform .25s, border-color .25s;
+  }
+  .card:hover{transform:translateY(-4px);border-color:var(--accent)}
+  .card .num{
+    position:absolute;top:18px;right:26px;
+    font-family:'Cormorant Garamond',serif;font-size:3.4rem;font-style:italic;
+    color:rgba(201,138,107,.18);
+  }
+  .card h3{font-size:1.7rem;margin-bottom:12px;color:var(--accent-2)}
+  .card p{color:var(--ink-dim);font-weight:300;margin-bottom:20px}
+  .card ul{list-style:none}
+  .card ul li{
+    padding:9px 0 9px 26px;position:relative;
+    color:var(--ink);font-size:.95rem;border-top:1px solid rgba(255,255,255,.05);
+  }
+  .card ul li::before{content:"—";position:absolute;left:0;color:var(--accent)}
+
+  /* proces */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:22px;margin-top:48px}
+  @media(max-width:900px){.steps{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:520px){.steps{grid-template-columns:1fr}}
+  .step{border-top:1px solid var(--line);padding-top:22px}
+  .step .n{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.1rem;color:var(--accent);margin-bottom:8px}
+  .step h3{font-size:1.25rem;margin-bottom:8px}
+  .step p{color:var(--ink-dim);font-size:.9rem;font-weight:300}
+
+  /* dlaczego */
+  .why{background:var(--bg-soft)}
+  .why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:26px;margin-top:48px}
+  @media(max-width:820px){.why-grid{grid-template-columns:1fr}}
+  .why-item{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:30px 26px}
+  .why-item .ico{font-size:1.6rem;margin-bottom:14px}
+  .why-item h3{font-size:1.3rem;margin-bottom:8px;color:var(--accent-2)}
+  .why-item p{color:var(--ink-dim);font-size:.92rem;font-weight:300}
+
+  /* galeria / instagram */
+  .ig-cards{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:48px}
+  @media(max-width:700px){.ig-cards{grid-template-columns:1fr}}
+  .ig-card{
+    border:1px solid var(--line);border-radius:var(--radius);padding:36px 30px;
+    background:linear-gradient(160deg,var(--card),var(--bg-soft));
+    display:flex;flex-direction:column;gap:10px;transition:border-color .25s, transform .25s;
+  }
+  .ig-card:hover{border-color:var(--accent);transform:translateY(-4px)}
+  .ig-card .handle{font-size:1.2rem;color:var(--accent-2);font-weight:500}
+  .ig-card p{color:var(--ink-dim);font-size:.92rem;font-weight:300}
+  .ig-card .go{margin-top:8px;font-size:.78rem;letter-spacing:.16em;text-transform:uppercase;color:var(--accent)}
+
+  /* kontakt */
+  .contact{text-align:center}
+  .contact .loc{color:var(--ink-dim);font-weight:300;margin-bottom:34px}
+  .contact-links{display:flex;gap:14px;justify-content:center;flex-wrap:wrap}
+
+  footer{border-top:1px solid var(--line);padding:30px 0;text-align:center;color:var(--ink-dim);font-size:.8rem;font-weight:300}
+  footer b{color:var(--accent-2);letter-spacing:.2em;font-weight:500}
+</style>
+</head>
+<body>
+
+<svg class="brand-symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <symbol id="mark-eye" viewBox="0 0 64 48"><path d="M5 25Q32 1 59 25Q32 47 5 25Z M12 14L9 8 M32 8V2 M52 14L55 8"/><circle cx="32" cy="25" r="8"/></symbol>
+  </defs>
+</svg>
+<header>
+  <div class="wrap nav">
+    <a class="logo" href="#" aria-label="MissEye — strona główna"><span>MissEye</span></a>
+    <ul>
+      <li><a href="#uslugi">Usługi</a></li>
+      <li><a href="#proces">Jak to działa</a></li>
+      <li><a href="#efekty">Efekty</a></li>
+      <li><a class="cta" href="#rezerwacja">Rezerwuj</a></li>
+    </ul>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="wrap hero-layout">
+    <div class="hero-copy">
+      <span class="badge">Beauty zaczyna się od rozmowy · Września / Poznań</span>
+      <h1>Mikropigmentacja, która przywraca<br><em>pewność siebie.</em></h1>
+      <p>Mikropigmentacja skóry głowy i makijaż permanentny. Poznaj ofertę MissEye i umów konsultację.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#uslugi">Poznaj ofertę</a>
+        <a class="btn btn-ghost" href="#kontakt">Skontaktuj się ↗</a>
+      </div>
+      <div class="hero-facts"><span><strong>SMP</strong> mikropigmentacja skóry głowy</span><span><strong>PM</strong> makijaż permanentny</span><span><strong>Września / Poznań</strong> umów konsultację</span></div>
+    </div>
+    <div class="brand-preview" aria-label="Poznaj MissEye">
+      <a class="brand-tile misseye-tile" href="#misseye">
+        <span class="tile-top">01 / PIGMENTACJA <span aria-hidden="true">↗</span></span>
+        <svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg>
+        <strong>MissEye<span class="brand-dot">.</span></strong>
+        <span class="tile-bottom">SMP &amp; makijaż permanentny<span>Precyzja. Subtelność. Ty.</span></span>
+      </a>
+      <p class="preview-caption">Precyzja. Subtelność. Ty.</p>
+    </div>
+  </div>
+</section>
+
+<section class="services" id="uslugi">
+  <div class="wrap">
+    <div class="section-heading">
+      <div><p class="kicker">Oferta MissEye</p><h2 class="title">Dobra opieka ma specjalizację.</h2></div>
+      <p class="lead">Mikropigmentacja skóry głowy i makijaż permanentny. Pierwsza konsultacja GRATIS — wybierz usługę i sprawdź <a href="#cennik">cennik</a>.</p>
+    </div>
+    <div class="brand-services">
+      <article class="brand-group misseye-group" id="misseye">
+        <div class="brand-heading"><svg class="brand-mark" aria-hidden="true"><use href="#mark-eye"/></svg><div><h3>MissEye</h3><p>Pigmentacja dopasowana do Ciebie</p></div><span class="brand-tag">SMP / PM</span></div>
+        <div class="specialist-profile">
+          <img class="specialist-portrait" src="media/misseye-specialist.webp" width="150" height="150" loading="lazy" decoding="async" alt="Specjalistka MissEye — SMP i makijaż permanentny.">
+          <div class="specialist-intro">
+            <span class="specialist-role">Specjalistka SMP / PM</span>
+            <h4>MissEye</h4>
+            <p>SMP / makijaż permanentny</p>
+          </div>
+        </div>
+        <p class="specialist-caption">Września i Poznań · miejsce ustalane z managerem · jeden kalendarz MissEye</p>
+        <p class="specialist-hours">Poniedziałek–piątek: 8:00–20:00<br>Sobota: 10:00–20:00</p>
+        <a class="consultation-offer" href="#rezerwacja" data-service="smp"><strong>Pierwsza konsultacja GRATIS</strong><small>Uprawnienie potwierdza manager. Umów konsultację ↗</small></a>
+        <a class="specialist-manager" href="tel:+48665638033" aria-label="Zadzwoń do managera: +48 665 638 033"><span>Kontakt MissEye</span><strong>665 638 033</strong></a>
+        <div class="service-pair">
+          <div class="service-detail">
+            <span class="service-code">SMP</span>
+            <h4>Mikropigmentacja skóry głowy</h4>
+            <p>Porozmawiaj o optycznym zagęszczeniu włosów, efekcie krótko ogolonej głowy i możliwościach kamuflażu blizn.</p>
+            <a class="service-link" href="#rezerwacja" data-service="smp">Konsultacja SMP <span aria-hidden="true">↗</span></a>
+          </div>
+          <div class="service-detail">
+            <span class="service-code">PM</span>
+            <h4>Makijaż permanentny</h4>
+            <p>Dobór efektu, kształtu i pigmentu. Omówimy Twoje oczekiwania, możliwości zabiegu i indywidualny plan.</p>
+            <a class="service-link" href="#rezerwacja" data-service="brwi">Konsultacja PM <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="proces">
+  <div class="wrap">
+    <p class="kicker">Krok po kroku</p>
+    <h2 class="title">Od pierwszej rozmowy do Twojej wizyty.</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="n">Krok 01</div>
+        <h3>Wybierz usługę</h3>
+        <p>Wybierz usługę MissEye. Podczas konsultacji omówimy Twoje oczekiwania i możliwy plan działania.</p>
+      </div>
+      <div class="step">
+        <div class="n">Krok 02</div>
+        <h3>Wybierz wariant i termin</h3>
+        <p>Konsultacja trwa 30 minut. Pełne zabiegi mają własne czasy — system rezerwuje cały wymagany przedział.</p>
+      </div>
+      <div class="step">
+        <div class="n">Krok 03</div>
+        <h3>Ustal plan</h3>
+        <p>Podczas spotkania omówicie oczekiwania, możliwości, przeciwwskazania, cenę i czas właściwego zabiegu.</p>
+      </div>
+      <div class="step">
+        <div class="n">Krok 04</div>
+        <h3>Zostańmy w kontakcie</h3>
+        <p>Jeden manager obsługuje wspólny telefon i WhatsApp. Pomoże w pytaniach oraz zmianie lub odwołaniu wizyty.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="why" id="dlaczego">
+  <div class="wrap">
+    <p class="kicker">Podejście MissEye</p>
+    <h2 class="title">Precyzja i indywidualne podejście.</h2>
+    <div class="why-grid">
+      <div class="why-item">
+        <div class="ico">🌿</div>
+        <h3>Specjalizacja</h3>
+        <p>Oferta MissEye obejmuje mikropigmentację skóry głowy i makijaż permanentny.</p>
+      </div>
+      <div class="why-item">
+        <div class="ico">🎯</div>
+        <h3>Czas tylko dla Ciebie</h3>
+        <p>Rezerwacja blokuje czas potrzebny na konsultację lub zabieg w kalendarzu MissEye.</p>
+      </div>
+      <div class="why-item">
+        <div class="ico">🤍</div>
+        <h3>Indywidualne podejście</h3>
+        <p>Najpierw rozmawiamy o potrzebach. Zakres i koszt zabiegu ustalamy indywidualnie, bez zgadywania online.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="efekty">
+  <div class="wrap">
+    <p class="kicker">Portfolio MissEye</p>
+    <h2 class="title">Subtelność widoczna w detalach.</h2>
+    <div class="portfolio-columns">
+      <article class="eye-portfolio" id="portfolio-misseye">
+        <p class="lead">Zajrzyj do gabinetu MissEye i poznaj kulisy pigmentacji. Poniższe filmy przedstawiają wyłącznie tę markę.</p>
+        <div class="video-gallery">
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/misseye-gabinet.webp" width="720" height="1280" aria-labelledby="film-gabinet">
+              <source src="media/misseye-gabinet.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/misseye-gabinet.mp4">Otwórz film „Poznaj gabinet”.</a>
+            </video>
+            <figcaption><h3 id="film-gabinet">Poznaj gabinet</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/misseye-gabinet.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/przed-i-po.webp" width="720" height="1280" aria-labelledby="film-przed-po">
+              <source src="media/przed-i-po.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/przed-i-po.mp4">Otwórz film „Przed i po”.</a>
+            </video>
+            <figcaption><h3 id="film-przed-po">Przed i po</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/przed-i-po.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/perfect-love.webp" width="720" height="1280" aria-labelledby="film-perfect-love">
+              <source src="media/perfect-love.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/perfect-love.mp4">Otwórz film „Perfect Love”.</a>
+            </video>
+            <figcaption><h3 id="film-perfect-love">Perfect Love</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/perfect-love.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/dynamiczny.webp" width="720" height="1280" aria-labelledby="film-kulisy">
+              <source src="media/dynamiczny.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/dynamiczny.mp4">Otwórz film „MISSEYE — kulisy pracy”.</a>
+            </video>
+            <figcaption><h3 id="film-kulisy">MISSEYE — kulisy pracy</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/dynamiczny.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+          <figure class="video-card">
+            <video controls playsinline preload="none" poster="media/wizyta-w-gabinecie.webp" width="720" height="1280" aria-labelledby="film-wizyta">
+              <source src="media/wizyta-w-gabinecie.mp4" type="video/mp4">
+              Twoja przeglądarka nie obsługuje wideo. <a href="media/wizyta-w-gabinecie.mp4">Otwórz film „Wizyta w gabinecie”.</a>
+            </video>
+            <figcaption><h3 id="film-wizyta">Wizyta w gabinecie</h3></figcaption>
+            <p class="video-error" role="alert" hidden>Nie udało się odtworzyć filmu. <a href="media/wizyta-w-gabinecie.mp4" target="_blank" rel="noopener">Otwórz plik MP4 w osobnej karcie.</a></p>
+          </figure>
+        </div>
+        <p class="gallery-note">Filmy uruchamiasz samodzielnie. Dźwięk i pełny ekran są dostępne w odtwarzaczu.</p>
+      </article>
+      </div>
+    <p class="lead">Więcej prac i informacji o mikropigmentacji skóry głowy znajdziesz na Instagramie MissEye.</p>
+    <div class="ig-cards specialist-socials">
+      <a class="ig-card" href="https://instagram.com/misseye.smp" target="_blank" rel="noopener">
+        <span class="handle">@misseye.smp</span>
+        <p>Mikropigmentacja skóry głowy — efekty zagęszczenia, kamuflaż blizn, metamorfozy przed / po.</p>
+        <span class="go">Zobacz na Instagramie →</span>
+      </a>
+      <a class="ig-card" href="https://instagram.com/misseye.pm" target="_blank" rel="noopener">
+        <span class="handle">@misseye.pm</span>
+        <p>Makijaż permanentny brwi — naturalne cieniowanie, projekty łuków brwiowych, efekty prac.</p>
+        <span class="go">Zobacz na Instagramie →</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<section class="booking" id="rezerwacja">
+  <div class="wrap">
+    <p class="kicker">Rezerwacje online</p>
+    <h2 class="title">Twoja marka. Twoja specjalistka. Twój termin.</h2>
+    <p class="lead">Konsultacja trwa 30 minut, ale rezerwujemy na nią pełną godzinę. Czas zabiegów zaokrąglamy w kalendarzu w górę do pełnych godzin, np. 90 → 120 minut. Kolejne etapy rezerwuje się osobno; cenę i kwalifikację potwierdza specjalistka.</p>
+    <p class="booking-note">MissEye przyjmuje we Wrześni i Poznaniu. Miejsce potwierdź z managerem przed wizytą: 665 638 033. Rezerwacja online dotyczy terminu, nie wyboru adresu.</p>
+    <section class="public-offer" id="cennik" aria-labelledby="offer-title">
+      <h3 id="offer-title">Cennik usług</h3>
+      <p class="offer-promotion"><strong>Pierwsza konsultacja MissEye GRATIS.</strong> Uprawnienie potwierdza manager; ceny konsultacji poniżej dotyczą kolejnych wizyt.</p>
+      <p>Wszystkie kwoty w PLN. „Od” to cena początkowa. Brak kwoty oznacza cenę do ustalenia z managerem. Rezerwacja nie pobiera opłaty.</p>
+      <p id="offer-status" role="status">Wczytuję cennik…</p>
+      <div id="offer-catalog" class="offer-columns"></div>
+    </section>
+    <div class="booking-layout">
+      <div>
+        <h3 class="title">Kiedy się spotkamy?</h3>
+        <ul class="booking-hours">
+          <li>Poniedziałek–piątek: 8:00–20:00</li>
+          <li>Sobota: 10:00–20:00</li>
+          <li>Niedziela: brak zapisów online</li>
+        </ul>
+        <p class="booking-note">Godziny MissEye według czasu polskiego. Rezerwacje do 90 dni naprzód. Wszystkie usługi MissEye korzystają z jednego kalendarza. Zapis nie blokuje Booksy.</p>
+        <a class="btn btn-primary" href="https://wa.me/48665638033" target="_blank" rel="noopener noreferrer">Napisz na WhatsApp</a>
+        <a class="manager-quick-contact" href="tel:+48665638033" aria-label="Zadzwoń do managera: +48 665 638 033">
+          <span>Twój kontakt do managera</span>
+          <strong>665 638 033</strong>
+          <small>MissEye · telefon +48</small>
+        </a>
+        <p class="booking-note" id="booking-wa-note">Sprawdzam dostępność potwierdzeń WhatsApp…</p>
+        <p class="booking-note">Zmiana lub odwołanie wizyty: napisz do salonu i podaj numer rezerwacji. Samo otwarcie rozmowy nie wysyła wiadomości.</p>
+      </div>
+      <div>
+        <form class="booking-form" id="booking-form">
+          <fieldset class="booking-fields" id="booking-fields" disabled>
+            <label>Usługa MissEye
+              <select id="booking-service" name="service" required></select>
+            </label>
+            <p class="booking-provider" id="booking-provider" aria-live="polite"></p>
+            <p id="booking-price" aria-live="polite"></p>
+            <label>Data
+              <input id="booking-date" name="date" type="date" required>
+            </label>
+            <div class="date-navigation">
+              <button id="booking-prev-days" type="button" aria-label="Poprzednie siedem dni">← 7 dni</button>
+              <button id="booking-nearest" type="button">Najbliższy wolny termin</button>
+              <button id="booking-next-days" type="button" aria-label="Następne siedem dni">7 dni →</button>
+            </div>
+            <div id="booking-days" class="date-strip" role="group" aria-label="Dostępność w kolejnych dniach"></div>
+            <p id="booking-duration" class="booking-note"></p>
+            <p id="booking-slot-label">Dostępne godziny</p>
+            <div class="slots" id="booking-slots" role="group" aria-labelledby="booking-slot-label"></div>
+            <label>Imię
+              <input id="booking-name" name="name" autocomplete="given-name" minlength="2" maxlength="80" required>
+            </label>
+            <label>Telefon z kodem kraju
+              <input id="booking-phone" name="phone" type="tel" autocomplete="tel" placeholder="+48 123 456 789" maxlength="24" required>
+            </label>
+            <label class="check">
+              <input id="booking-consent" type="checkbox" required>
+              <span>Zapoznałam/em się z <a href="#dane-rezerwacji">informacją o przetwarzaniu danych rezerwacji</a>.</span>
+            </label>
+            <label class="check" id="booking-wa-label" hidden>
+              <input id="booking-wa-consent" type="checkbox">
+              <span>Chcę otrzymać potwierdzenie tej rezerwacji przez WhatsApp na podany numer. Wiadomość zostanie obsłużona przez Meta. Zgoda jest dobrowolna.</span>
+            </label>
+            <p id="booking-email-note"></p>
+            <label class="check" id="booking-email-label" hidden>
+              <input id="booking-email-consent" type="checkbox">
+              <span>Chcę otrzymać jedno organizacyjne przypomnienie e-mail w ciągu 24 godzin przed wizytą. Dobrowolnie zgadzam się na użycie adresu wyłącznie w tym celu; zgodę mogę wycofać przez kontakt z managerem.</span>
+            </label>
+            <label id="booking-email-field" hidden>E-mail do przypomnienia
+              <input id="booking-email" type="email" autocomplete="email" maxlength="254" disabled>
+            </label>
+          </fieldset>
+          <p class="booking-status" id="booking-status" role="status" aria-live="polite">Ładuję kalendarz…</p>
+          <button class="btn btn-primary" id="booking-submit" type="submit" disabled>Zarezerwuj wizytę</button>
+          <noscript>Rezerwacje wymagają JavaScript. Możesz też skontaktować się z salonem przez WhatsApp: +48 665 638 033.</noscript>
+        </form>
+        <div class="booking-result" id="booking-result" tabindex="-1" hidden>
+          <h3>Termin zarezerwowany</h3>
+          <p id="booking-summary"></p>
+          <p id="booking-reference"></p>
+          <p>Zachowaj numer rezerwacji. Nie musisz wysyłać wiadomości, aby termin pozostał zajęty.</p>
+          <p id="booking-notification"></p>
+          <p id="booking-email-notification"></p>
+          <a class="btn btn-primary" id="booking-whatsapp" target="_blank" rel="noopener noreferrer">Otwórz rozmowę WhatsApp</a>
+          <p>Przycisk otworzy gotową wiadomość do salonu. Wyślij ją samodzielnie w WhatsAppie.</p>
+          <button class="text-button" id="booking-new" type="button">Zarezerwuj kolejną wizytę</button>
+        </div>
+      </div>
+    </div>
+    <div class="privacy" id="dane-rezerwacji">
+      <h3>Dane rezerwacji</h3>
+      <p>Imię, telefon, wybrana usługa i termin są zapisywane w systemie rezerwacji MissEye. Dostęp do rezerwacji ma manager w celu organizacji wizyty i kontaktu (działania przed zawarciem i wykonanie umowy, art. 6 ust. 1 lit. b RODO). Bez tych danych rezerwacja online nie jest możliwa. Nie podawaj tutaj informacji o stanie zdrowia. W sprawie dostępu do danych, ich poprawienia, usunięcia lub ograniczenia przetwarzania skontaktuj się przez WhatsApp: +48 665 638 033. Przysługuje Ci prawo wniesienia skargi do Prezesa UODO.</p>
+      <p>Opcjonalne potwierdzenie WhatsApp jest obsługiwane przez Meta na podstawie dobrowolnej zgody (art. 6 ust. 1 lit. a RODO), którą możesz wycofać przez kontakt z salonem. Dane nie są publikowane w kalendarzu. Pełne dane administratora, okres przechowywania i informacje o dostawcach hostingu oraz transferach danych wymagają uzupełnienia przed publicznym uruchomieniem rezerwacji.</p>
+      <p>Opcjonalny adres e-mail zapisujemy wyłącznie po osobnej zgodzie na przypomnienie (art. 6 ust. 1 lit. a RODO). Przekazujemy go dostawcy poczty hostingu w celu wysłania organizacyjnej wiadomości, bez marketingu. Wycofanie zgody przez managera zatrzymuje kolejne przypomnienia i usuwa adres z rezerwacji; wiadomości już wysłanej nie można cofnąć.</p>
+    </div>
+  </div>
+</section>
+
+<section class="contact" id="kontakt">
+  <div class="wrap">
+    <p class="kicker">Kontakt MissEye</p>
+    <h2 class="title">Daj sobie chwilę. Resztę ustalimy razem.</h2>
+    <div class="manager-contact">
+      <span class="manager-contact-label">Manager MissEye</span>
+      <a class="manager-phone" href="tel:+48665638033" aria-label="Zadzwoń do managera: +48 665 638 033">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3H4a1 1 0 0 0-1 1c0 9.4 7.6 17 17 17a1 1 0 0 0 1-1v-3l-5-2-2 2a14 14 0 0 1-7-7l2-2-2-5Z"/></svg>
+        <span class="manager-phone-number">665 638 033</span>
+      </a>
+      <span class="manager-contact-hint">Telefon / WhatsApp · +48</span>
+    </div>
+    <p class="loc">MissEye · Września / Poznań · miejsce wizyty do uzgodnienia</p>
+    <div class="contact-links">
+      <a class="btn btn-primary" href="#rezerwacja">Rezerwacja online</a>
+      <a class="btn btn-ghost" href="https://wa.me/48665638033" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a class="btn btn-ghost" href="https://instagram.com/misseye.smp" target="_blank" rel="noopener">Instagram SMP</a>
+      <a class="btn btn-ghost" href="https://instagram.com/misseye.pm" target="_blank" rel="noopener">Instagram PM</a>
+      
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <b>MissEye</b> &nbsp;•&nbsp; Mikropigmentacja skóry głowy / makijaż permanentny &nbsp;•&nbsp; Września / Poznań<br>
+     © 2026
+  </div>
+</footer>
+
+</body>
+</html>
